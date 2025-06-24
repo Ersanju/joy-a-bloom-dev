@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'home_page.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
