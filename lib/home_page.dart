@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'delivery_location_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -11,9 +13,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
-  final String _locationText = 'Fetching location...';
-  final String _pinCode = '';
+  String _locationText = 'Fetching location...';
+  String _pinCode = '';
   Map<String, dynamic>? _userData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +40,20 @@ class _HomePageState extends State<HomePage> {
       title: Row(
         children: [
           InkWell(
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const DeliveryLocationPage(),
                 ),
               );
+
+              if (result != null && mounted) {
+                setState(() {
+                  _pinCode = result['pin'] ?? '';
+                  _locationText = result['location'] ?? '';
+                });
+              }
             },
             child: Row(
               children: [
@@ -140,5 +155,60 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+
+  Future<void> _fetchLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _locationText = 'Location services disabled';
+      });
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _locationText = 'Permission denied';
+        });
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _locationText = 'Permission permanently denied';
+      });
+      return;
+    }
+
+    // Get current position
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    // Convert coordinates to address
+    List<Placemark> placemarks = await placemarkFromCoordinates(
+      position.latitude,
+      position.longitude,
+    );
+
+    if (placemarks.isNotEmpty) {
+      final place = placemarks.first;
+      setState(() {
+        _locationText = '${place.locality}, ${place.administrativeArea}';
+        _pinCode = '${place.postalCode}';
+      });
+    } else {
+      setState(() {
+        _locationText = 'Location not found';
+      });
+    }
   }
 }
