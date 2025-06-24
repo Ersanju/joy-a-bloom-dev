@@ -256,5 +256,4 @@ class _DeliveryLocationPageState extends State<DeliveryLocationPage> {
       Navigator.pop(context, {'pin': fetchedPin, 'location': fetchedLocation});
     }
   }
-
 }

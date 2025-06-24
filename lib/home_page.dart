@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:joy_a_bloom_dev/search_results_page.dart';
 import 'delivery_location_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _currentIndex == 0 ? buildAppBar() : null,
-      body: Center(child: Text("home page")),
+      body: _pages[_currentIndex],
       bottomNavigationBar: buildBottomNavigationBar(),
     );
   }
@@ -210,5 +211,45 @@ class _HomePageState extends State<HomePage> {
         _locationText = 'Location not found';
       });
     }
+  }
+
+  List<Widget> get _pages => [
+    buildHomeContent(),
+    Text('data'),
+    Text('data'),
+    Text('data'),
+  ];
+
+  Widget buildHomeContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 5),
+          buildSearchBar(context),
+          const SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
+
+  Widget buildSearchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: TextField(
+        onSubmitted: (query) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SearchResultsPage(query: query),
+            ),
+          );
+        },
+        decoration: InputDecoration(
+          hintText: "Search for cakes, gifts, flowers...",
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
   }
 }
