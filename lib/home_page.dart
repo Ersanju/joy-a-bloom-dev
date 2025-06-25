@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:joy_a_bloom_dev/search_results_page.dart';
-import 'delivery_location_page.dart';
+import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
+import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
+import 'models/category.dart';
+import 'pages/home/delivery_location_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -121,22 +123,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> fetchUserData() async {
-    try {
-      DocumentSnapshot userSnapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc('ersanjay')
-              .get();
-
-      if (userSnapshot.exists) {
-        setState(() {
-          _userData = userSnapshot.data() as Map<String, dynamic>;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching user data: $e");
-    }
+  Widget buildHomeContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 5),
+          buildSearchBar(context),
+          const SizedBox(height: 15),
+          buildCategorySection(),
+        ],
+      ),
+    );
   }
 
   Widget buildBottomNavigationBar() {
@@ -156,6 +153,24 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+
+  Future<void> fetchUserData() async {
+    try {
+      DocumentSnapshot userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc('ersanjay')
+              .get();
+
+      if (userSnapshot.exists) {
+        setState(() {
+          _userData = userSnapshot.data() as Map<String, dynamic>;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching user data: $e");
+    }
   }
 
   Future<void> _fetchLocation() async {
@@ -220,18 +235,6 @@ class _HomePageState extends State<HomePage> {
     Text('data'),
   ];
 
-  Widget buildHomeContent() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 5),
-          buildSearchBar(context),
-          const SizedBox(height: 15),
-        ],
-      ),
-    );
-  }
-
   Widget buildSearchBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -252,4 +255,125 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget buildCategorySection() {
+    return FutureBuilder<List<Category>>(
+      future: fetchCategoriesFromFirestore(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        } else if (snapshot.hasError) {
+          return const Text('Error loading categories');
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Text('No categories found');
+        }
+
+        final categories = snapshot.data!;
+        return buildCategoryList(categories);
+      },
+    );
+  }
+
+  Future<List<Category>> fetchCategoriesFromFirestore() async {
+    final nullSnapshot = await FirebaseFirestore.instance
+        .collection('categories')
+        .where('active', isEqualTo: true)
+        .where('categoryId', isNull: true)
+        .orderBy('priority')
+        .get();
+
+    final emptySnapshot = await FirebaseFirestore.instance
+        .collection('categories')
+        .where('active', isEqualTo: true)
+        .where('categoryId', isEqualTo: '')
+        .orderBy('priority')
+        .get();
+
+    final allDocs = [...nullSnapshot.docs, ...emptySnapshot.docs];
+    final seen = <String>{};
+
+    return allDocs.where((doc) => seen.add(doc.id)).map((doc) {
+      final data = doc.data();
+      return Category(
+        id: doc.id,
+        name: data['name'],
+        categoryId: data['categoryId'],
+        imageUrl: data['imageUrl'],
+        description: data['description'],
+        priority: data['priority'],
+        active: data['active'],
+        createdAt: (data['createdAt'] as Timestamp).toDate(),
+      );
+    }).toList();
+  }
+
+  Widget buildCategoryList(List<Category> categories) {
+    final int half = (categories.length / 2).ceil();
+    return SizedBox(
+      height: 220,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(half, (index) {
+            final top = categories[index];
+            final bottom =
+                (index + half < categories.length)
+                    ? categories[index + half]
+                    : null;
+
+            return Container(
+              width: 90,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              child: Column(
+                children: [
+                  buildCategoryItem(context,top),
+                  const SizedBox(height: 20),
+                  if (bottom != null) buildCategoryItem(context,bottom),
+                ],
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget buildCategoryItem(BuildContext context, Category category) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductsByCategoryGridPage(
+              categoryId: category.id,
+              categoryName: category.name,
+            ),
+          ),
+        );
+      },
+      child: Column(
+        children: [
+          Hero(
+            tag: category.id,
+            child: CircleAvatar(
+              radius: 30,
+              backgroundImage: NetworkImage(category.imageUrl),
+              backgroundColor: Colors.grey[200],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            category.name,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+
+
 }
