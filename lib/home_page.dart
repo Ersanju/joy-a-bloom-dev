@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -16,14 +18,30 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+  final PageController _pageController = PageController();
   String _locationText = 'Fetching location...';
   String _pinCode = '';
   Map<String, dynamic>? _userData;
+  List<String> bannerImages = [];
+  bool isLoadingBanners = true;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _fetchLocation();
+    _fetchBannerImages();
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_pageController.hasClients) {
+        final nextPage =
+            (_pageController.page!.round() + 1) % bannerImages.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
@@ -129,8 +147,9 @@ class _HomePageState extends State<HomePage> {
         children: [
           const SizedBox(height: 5),
           buildSearchBar(context),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
           buildCategorySection(),
+          buildBannerSlider(),
         ],
       ),
     );
@@ -275,19 +294,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<List<Category>> fetchCategoriesFromFirestore() async {
-    final nullSnapshot = await FirebaseFirestore.instance
-        .collection('categories')
-        .where('active', isEqualTo: true)
-        .where('categoryId', isNull: true)
-        .orderBy('priority')
-        .get();
+    final nullSnapshot =
+        await FirebaseFirestore.instance
+            .collection('categories')
+            .where('active', isEqualTo: true)
+            .where('categoryId', isNull: true)
+            .orderBy('priority')
+            .get();
 
-    final emptySnapshot = await FirebaseFirestore.instance
-        .collection('categories')
-        .where('active', isEqualTo: true)
-        .where('categoryId', isEqualTo: '')
-        .orderBy('priority')
-        .get();
+    final emptySnapshot =
+        await FirebaseFirestore.instance
+            .collection('categories')
+            .where('active', isEqualTo: true)
+            .where('categoryId', isEqualTo: '')
+            .orderBy('priority')
+            .get();
 
     final allDocs = [...nullSnapshot.docs, ...emptySnapshot.docs];
     final seen = <String>{};
@@ -326,9 +347,9 @@ class _HomePageState extends State<HomePage> {
               margin: const EdgeInsets.symmetric(horizontal: 6),
               child: Column(
                 children: [
-                  buildCategoryItem(context,top),
+                  buildCategoryItem(context, top),
                   const SizedBox(height: 20),
-                  if (bottom != null) buildCategoryItem(context,bottom),
+                  if (bottom != null) buildCategoryItem(context, bottom),
                 ],
               ),
             );
@@ -344,10 +365,11 @@ class _HomePageState extends State<HomePage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ProductsByCategoryGridPage(
-              categoryId: category.id,
-              categoryName: category.name,
-            ),
+            builder:
+                (_) => ProductsByCategoryGridPage(
+                  categoryId: category.id,
+                  categoryName: category.name,
+                ),
           ),
         );
       },
@@ -372,8 +394,65 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _fetchBannerImages() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('banners')
+              // .where('active', isEqualTo: true)
+              .orderBy('priority')
+              .get();
 
+      final fetchedImages =
+          snapshot.docs.map((doc) => doc['imageUrl'] as String).toList();
 
+      setState(() {
+        bannerImages = fetchedImages;
+        isLoadingBanners = false;
+      });
+    } catch (e) {
+      print("Error loading banners: $e");
+      setState(() {
+        bannerImages = [];
+        isLoadingBanners = false;
+      });
+    }
+  }
 
+  Widget buildBannerSlider() {
+    if (isLoadingBanners) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
+    if (bannerImages.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text("No banners available")),
+      );
+    }
+
+    return SizedBox(
+      height: 200,
+      width: double.infinity,
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: bannerImages.length,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              image: DecorationImage(
+                image: NetworkImage(bannerImages[index]),
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
