@@ -150,6 +150,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
           buildCategorySection(),
           buildBannerSlider(),
+          SizedBox(height: 10),
+          featuredOffersSection(),
         ],
       ),
     );
@@ -411,7 +413,7 @@ class _HomePageState extends State<HomePage> {
         isLoadingBanners = false;
       });
     } catch (e) {
-      print("Error loading banners: $e");
+      debugPrint("Error loading banners: $e");
       setState(() {
         bannerImages = [];
         isLoadingBanners = false;
@@ -453,6 +455,145 @@ class _HomePageState extends State<HomePage> {
           );
         },
       ),
+    );
+  }
+
+  Widget featuredOffersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          child: Text(
+            "🎉 Featured Offers",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        SizedBox(
+          height: 180,
+          child: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('products')
+                    .where('tags', arrayContains: 'featured')
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text('No featured products available.'),
+                );
+              }
+
+              final products = snapshot.data!.docs;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: products.length,
+                padding: const EdgeInsets.only(left: 16),
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  final data = product.data() as Map<String, dynamic>;
+
+                  final defaultVariant =
+                      data['extraAttributes']?['cakeAttribute']?['defaultVariant'];
+                  final price = defaultVariant?['price'] ?? 0;
+                  final oldPrice = defaultVariant?['oldPrice'] ?? 0;
+                  final discount =
+                      (oldPrice > price)
+                          ? (((oldPrice - price) / oldPrice) * 100).round()
+                          : 0;
+
+                  final imageUrl =
+                      (data['imageUrls'] as List?)?.first ??
+                      "https://via.placeholder.com/150";
+
+                  return GestureDetector(
+                    onTap: () {
+                      // Navigate to Product Detail Page with product.id or data
+                    },
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 6,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              imageUrl,
+                              height: 100,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              data['name'] ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    "₹$price",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                if (oldPrice > price)
+                                  Flexible(
+                                    child: Text(
+                                      "₹$oldPrice",
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
