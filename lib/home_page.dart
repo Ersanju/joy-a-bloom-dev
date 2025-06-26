@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
+import 'package:joy_a_bloom_dev/widgets/product_card.dart';
 import 'models/category.dart';
 import 'pages/home/delivery_location_page.dart';
 
@@ -151,7 +152,7 @@ class _HomePageState extends State<HomePage> {
           buildCategorySection(),
           buildBannerSlider(),
           SizedBox(height: 10),
-          featuredOffersSection(),
+          featuredOffersSection(context),
         ],
       ),
     );
@@ -399,11 +400,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchBannerImages() async {
     try {
       final snapshot =
-          await FirebaseFirestore.instance
-              .collection('banners')
-              // .where('active', isEqualTo: true)
-              .orderBy('priority')
-              .get();
+          await FirebaseFirestore.instance.collection('banners').get();
 
       final fetchedImages =
           snapshot.docs.map((doc) => doc['imageUrl'] as String).toList();
@@ -458,7 +455,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget featuredOffersSection() {
+  Widget featuredOffersSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -470,7 +467,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         SizedBox(
-          height: 180,
+          height: 190, // increased to accommodate stacked card layout
           child: StreamBuilder<QuerySnapshot>(
             stream:
                 FirebaseFirestore.instance
@@ -494,100 +491,10 @@ class _HomePageState extends State<HomePage> {
                 itemCount: products.length,
                 padding: const EdgeInsets.only(left: 16),
                 itemBuilder: (context, index) {
-                  final product = products[index];
-                  final data = product.data() as Map<String, dynamic>;
+                  final product =
+                      products[index].data() as Map<String, dynamic>;
 
-                  final defaultVariant =
-                      data['extraAttributes']?['cakeAttribute']?['defaultVariant'];
-                  final price = defaultVariant?['price'] ?? 0;
-                  final oldPrice = defaultVariant?['oldPrice'] ?? 0;
-                  final discount =
-                      (oldPrice > price)
-                          ? (((oldPrice - price) / oldPrice) * 100).round()
-                          : 0;
-
-                  final imageUrl =
-                      (data['imageUrls'] as List?)?.first ??
-                      "https://via.placeholder.com/150";
-
-                  return GestureDetector(
-                    onTap: () {
-                      // Navigate to Product Detail Page with product.id or data
-                    },
-                    child: Container(
-                      width: 140,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            blurRadius: 6,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
-                            ),
-                            child: Image.network(
-                              imageUrl,
-                              height: 100,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              data['name'] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                            ),
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    "₹$price",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                if (oldPrice > price)
-                                  Flexible(
-                                    child: Text(
-                                      "₹$oldPrice",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        decoration: TextDecoration.lineThrough,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+                  return ProductCard(productData: product, onTap: () {});
                 },
               );
             },
