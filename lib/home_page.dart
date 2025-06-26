@@ -21,16 +21,24 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+  bool isHomeLoading = true;
+  List<Category> categories = [];
+  List<String> bannerImages = [];
+  List<Map<String, dynamic>> featuredProducts = [];
+  List<Map<String, dynamic>> newArrivals = [];
+  List<Map<String, dynamic>> youMayAlsoLikeProducts = [];
+  List<Map<String, dynamic>> appReviews = [];
   String _locationText = 'Fetching location...';
   String _pinCode = '';
   Map<String, dynamic>? _userData;
-  List<String> bannerImages = [];
+
   bool isLoadingBanners = true;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    _loadAllHomeData();
     _fetchLocation();
     _fetchBannerImages();
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
@@ -149,6 +157,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget buildHomeContent() {
+    if (isHomeLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -189,6 +200,119 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+
+  Future<void> _loadAllHomeData() async {
+    try {
+      setState(() => isHomeLoading = true);
+
+      // 1. Categories (null and empty categoryId)
+      final nullSnapshot = await FirebaseFirestore.instance
+          .collection('categories')
+          .where('active', isEqualTo: true)
+          .where('categoryId', isNull: true)
+          .orderBy('priority')
+          .get();
+
+      final emptySnapshot = await FirebaseFirestore.instance
+          .collection('categories')
+          .where('active', isEqualTo: true)
+          .where('categoryId', isEqualTo: '')
+          .orderBy('priority')
+          .get();
+
+      final allDocs = [...nullSnapshot.docs, ...emptySnapshot.docs];
+      final seen = <String>{};
+
+      categories = allDocs
+          .where((doc) => seen.add(doc.id))
+          .map((doc) {
+        final data = doc.data();
+        return Category(
+          id: doc.id,
+          name: data['name'],
+          categoryId: data['categoryId'],
+          imageUrl: data['imageUrl'],
+          description: data['description'],
+          priority: data['priority'],
+          active: data['active'],
+          createdAt: (data['createdAt'] as Timestamp).toDate(),
+        );
+      })
+          .toList();
+
+      // 2. Other Firestore collections
+      final bannerFuture = FirebaseFirestore.instance
+          .collection('banners')
+          .where('active', isEqualTo: true)
+          .get();
+
+      final featuredFuture = FirebaseFirestore.instance
+          .collection('products')
+          .where('tags', arrayContains: 'featured')
+          .get();
+
+      final newArrivalsFuture = FirebaseFirestore.instance
+          .collection('products')
+          .orderBy('createdAt', descending: true)
+          .limit(10)
+          .get();
+
+      final youMayAlsoLikeFuture = FirebaseFirestore.instance
+          .collection('products')
+          .where('tags', arrayContainsAny: ['recommended', 'trending'])
+          .limit(10)
+          .get();
+
+      final appReviewsFuture = FirebaseFirestore.instance
+          .collection('app_reviews')
+          .orderBy('createdAt', descending: true)
+          .limit(5)
+          .get();
+
+      // 3. Run all futures in parallel
+      final results = await Future.wait([
+        bannerFuture,
+        featuredFuture,
+        newArrivalsFuture,
+        youMayAlsoLikeFuture,
+        appReviewsFuture,
+      ]);
+
+      final bannerSnapshot = results[0] as QuerySnapshot;
+      final featuredSnapshot = results[1] as QuerySnapshot;
+      final newArrivalsSnapshot = results[2] as QuerySnapshot;
+      final youMayAlsoLikeSnapshot = results[3] as QuerySnapshot;
+      final appReviewsSnapshot = results[4] as QuerySnapshot;
+
+      // 4. Update state with all fetched data
+      setState(() {
+        bannerImages = bannerSnapshot.docs
+            .map((doc) => doc['imageUrl'] as String)
+            .toList();
+
+        featuredProducts = featuredSnapshot.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList();
+
+        newArrivals = newArrivalsSnapshot.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList();
+
+        youMayAlsoLikeProducts = youMayAlsoLikeSnapshot.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList();
+
+        appReviews = appReviewsSnapshot.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList();
+
+        isHomeLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error loading homepage data: $e");
+      setState(() => isHomeLoading = false); // fallback: show partial UI
+    }
   }
 
   Future<void> fetchUserData() async {
@@ -293,21 +417,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget buildCategorySection() {
-    return FutureBuilder<List<Category>>(
-      future: fetchCategoriesFromFirestore(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        } else if (snapshot.hasError) {
-          return const Text('Error loading categories');
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Text('No categories found');
-        }
-
-        final categories = snapshot.data!;
-        return buildCategoryList(categories);
-      },
-    );
+    if (categories.isEmpty) return const SizedBox(); // Or a fallback widget
+    return buildCategoryList(categories);
   }
 
   Future<List<Category>> fetchCategoriesFromFirestore() async {
@@ -482,35 +593,13 @@ class _HomePageState extends State<HomePage> {
         ),
         SizedBox(
           height: 190, // increased to accommodate stacked card layout
-          child: StreamBuilder<QuerySnapshot>(
-            stream:
-                FirebaseFirestore.instance
-                    .collection('products')
-                    .where('tags', arrayContains: 'featured')
-                    .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(
-                  child: Text('No featured products available.'),
-                );
-              }
-
-              final products = snapshot.data!.docs;
-
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: products.length,
-                padding: const EdgeInsets.only(left: 16),
-                itemBuilder: (context, index) {
-                  final product =
-                      products[index].data() as Map<String, dynamic>;
-
-                  return ProductCard(productData: product, onTap: () {});
-                },
-              );
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: featuredProducts.length,
+            padding: const EdgeInsets.only(left: 16),
+            itemBuilder: (context, index) {
+              final product = featuredProducts[index];
+              return ProductCard(productData: product, onTap: () {});
             },
           ),
         ),
@@ -519,6 +608,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget newArrivalsSection() {
+    if (newArrivals.isEmpty) return const SizedBox(); // Or show placeholder
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -531,37 +622,17 @@ class _HomePageState extends State<HomePage> {
         ),
         SizedBox(
           height: 190,
-          child: StreamBuilder<QuerySnapshot>(
-            stream:
-                FirebaseFirestore.instance
-                    .collection('products')
-                    .orderBy('createdAt', descending: true)
-                    .limit(10)
-                    .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(child: Text('No new arrivals found.'));
-              }
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 16),
+            itemCount: newArrivals.length,
+            itemBuilder: (context, index) {
+              final productData = newArrivals[index];
 
-              final products = snapshot.data!.docs;
-
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: 16),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final productData =
-                      products[index].data() as Map<String, dynamic>;
-
-                  return ProductCard(
-                    productData: productData,
-                    onTap: () {
-                      // Navigate to product details
-                    },
-                  );
+              return ProductCard(
+                productData: productData,
+                onTap: () {
+                  // Navigate to product detail
                 },
               );
             },
@@ -572,6 +643,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget youMayAlsoLikeSection() {
+    if (youMayAlsoLikeProducts.isEmpty) return const SizedBox();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -584,40 +657,17 @@ class _HomePageState extends State<HomePage> {
         ),
         SizedBox(
           height: 190,
-          child: StreamBuilder<QuerySnapshot>(
-            stream:
-                FirebaseFirestore.instance
-                    .collection('products')
-                    .where(
-                      'tags',
-                      arrayContainsAny: ['recommended', 'trending'],
-                    )
-                    .limit(10)
-                    .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(child: Text('No suggestions available.'));
-              }
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 16),
+            itemCount: youMayAlsoLikeProducts.length,
+            itemBuilder: (context, index) {
+              final productData = youMayAlsoLikeProducts[index];
 
-              final products = snapshot.data!.docs;
-
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: 16),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final productData =
-                      products[index].data() as Map<String, dynamic>;
-
-                  return ProductCard(
-                    productData: productData,
-                    onTap: () {
-                      // Navigate to product details
-                    },
-                  );
+              return ProductCard(
+                productData: productData,
+                onTap: () {
+                  // Navigate to product details
                 },
               );
             },
@@ -628,6 +678,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget appReviewsSection() {
+    if (appReviews.isEmpty) return const SizedBox();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -638,96 +690,70 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
-        StreamBuilder<QuerySnapshot>(
-          stream:
-              FirebaseFirestore.instance
-                  .collection('app_reviews')
-                  .orderBy('createdAt', descending: true)
-                  .limit(5)
-                  .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        SizedBox(
+          height: 150,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 16, bottom: 8),
+            itemCount: appReviews.length,
+            itemBuilder: (context, index) {
+              final data = appReviews[index];
+              final userName = data['userName'] ?? 'Anonymous';
+              final city = data['city'] ?? '';
+              final message = data['message'] ?? '';
+              final rating = (data['rating'] ?? 5).toDouble();
 
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text("No customer reviews yet."),
+              return Container(
+                width: 240,
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Rating stars
+                    Row(
+                      children: List.generate(5, (i) {
+                        return Icon(
+                          i < rating ? Icons.star : Icons.star_border,
+                          size: 14,
+                          color: Colors.amber,
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 4),
+                    // Review message
+                    Text(
+                      message,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const Spacer(),
+                    // User and city
+                    Text(
+                      "- $userName, $city",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
               );
-            }
-
-            final reviews = snapshot.data!.docs;
-
-            return SizedBox(
-              height: 150,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: 16, bottom: 8),
-                itemCount: reviews.length,
-                itemBuilder: (context, index) {
-                  final data = reviews[index].data() as Map<String, dynamic>;
-
-                  final userName = data['userName'] ?? 'Anonymous';
-                  final city = data['city'] ?? '';
-                  final message = data['message'] ?? '';
-                  final rating = (data['rating'] ?? 5).toDouble();
-
-                  return Container(
-                    width: 240,
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Rating stars
-                        Row(
-                          children: List.generate(5, (i) {
-                            return Icon(
-                              i < rating ? Icons.star : Icons.star_border,
-                              size: 14,
-                              color: Colors.amber,
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 4),
-
-                        // Review message
-                        Text(
-                          message,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        const Spacer(),
-
-                        // User and city
-                        Text(
-                          "- $userName, $city",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
+            },
+          ),
         ),
       ],
     );
