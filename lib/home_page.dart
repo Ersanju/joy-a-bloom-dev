@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:joy_a_bloom_dev/pages/authentication/signup_login_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
@@ -111,7 +112,12 @@ class _HomePageState extends State<HomePage> {
         _userData == null
             ? TextButton(
               onPressed: () {
-                // Navigate to login/signup page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SignupLoginPage(),
+                  ),
+                );
               },
               child: const Text(
                 "Login / Signup",
