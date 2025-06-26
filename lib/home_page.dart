@@ -159,6 +159,8 @@ class _HomePageState extends State<HomePage> {
           youMayAlsoLikeSection(),
           SizedBox(height: 10),
           appReviewsSection(),
+          SizedBox(height: 10),
+          brandingSection(),
         ],
       ),
     );
@@ -722,6 +724,62 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ],
+    );
+  }
+
+  Widget brandingSection() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "🌸 Why Joy-a-Bloom?",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          brandingTile(
+            "🎁",
+            "Curated Gifting",
+            "Handpicked items for every celebration.",
+          ),
+          brandingTile(
+            "🚚",
+            "On-Time Delivery",
+            "Timely, safe delivery you can rely on.",
+          ),
+          brandingTile(
+            "🧁",
+            "Premium Quality",
+            "Fresh, delicious and beautifully made.",
+          ),
+          brandingTile("📞", "24x7 Support", "Always here to help, anytime."),
+        ],
+      ),
+    );
+  }
+
+  Widget brandingTile(String emoji, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 24)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(subtitle, style: const TextStyle(color: Colors.grey)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
