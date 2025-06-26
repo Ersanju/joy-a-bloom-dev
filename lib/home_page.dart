@@ -153,6 +153,12 @@ class _HomePageState extends State<HomePage> {
           buildBannerSlider(),
           SizedBox(height: 10),
           featuredOffersSection(context),
+          SizedBox(height: 10),
+          newArrivalsSection(),
+          SizedBox(height: 10),
+          youMayAlsoLikeSection(),
+          SizedBox(height: 10),
+          appReviewsSection(),
         ],
       ),
     );
@@ -499,6 +505,221 @@ class _HomePageState extends State<HomePage> {
               );
             },
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget newArrivalsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          child: Text(
+            "🆕 New Arrivals",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        SizedBox(
+          height: 190,
+          child: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('products')
+                    .orderBy('createdAt', descending: true)
+                    .limit(10)
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No new arrivals found.'));
+              }
+
+              final products = snapshot.data!.docs;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 16),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final productData =
+                      products[index].data() as Map<String, dynamic>;
+
+                  return ProductCard(
+                    productData: productData,
+                    onTap: () {
+                      // Navigate to product details
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget youMayAlsoLikeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          child: Text(
+            "❤️ You May Also Like",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        SizedBox(
+          height: 190,
+          child: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('products')
+                    .where(
+                      'tags',
+                      arrayContainsAny: ['recommended', 'trending'],
+                    )
+                    .limit(10)
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No suggestions available.'));
+              }
+
+              final products = snapshot.data!.docs;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 16),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final productData =
+                      products[index].data() as Map<String, dynamic>;
+
+                  return ProductCard(
+                    productData: productData,
+                    onTap: () {
+                      // Navigate to product details
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget appReviewsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+          child: Text(
+            "⭐ What Our Customers Say",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        StreamBuilder<QuerySnapshot>(
+          stream:
+              FirebaseFirestore.instance
+                  .collection('app_reviews')
+                  .orderBy('createdAt', descending: true)
+                  .limit(5)
+                  .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text("No customer reviews yet."),
+              );
+            }
+
+            final reviews = snapshot.data!.docs;
+
+            return SizedBox(
+              height: 150,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 16, bottom: 8),
+                itemCount: reviews.length,
+                itemBuilder: (context, index) {
+                  final data = reviews[index].data() as Map<String, dynamic>;
+
+                  final userName = data['userName'] ?? 'Anonymous';
+                  final city = data['city'] ?? '';
+                  final message = data['message'] ?? '';
+                  final rating = (data['rating'] ?? 5).toDouble();
+
+                  return Container(
+                    width: 240,
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Rating stars
+                        Row(
+                          children: List.generate(5, (i) {
+                            return Icon(
+                              i < rating ? Icons.star : Icons.star_border,
+                              size: 14,
+                              color: Colors.amber,
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Review message
+                        Text(
+                          message,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        const Spacer(),
+
+                        // User and city
+                        Text(
+                          "- $userName, $city",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ],
     );
