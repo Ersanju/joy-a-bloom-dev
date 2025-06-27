@@ -428,77 +428,46 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget buildCategorySection() {
-    if (categories.isEmpty) return const SizedBox(); // Or a fallback widget
-    return buildCategoryList(categories);
-  }
-
-  Future<List<Category>> fetchCategoriesFromFirestore() async {
-    final nullSnapshot =
-        await FirebaseFirestore.instance
-            .collection('categories')
-            .where('active', isEqualTo: true)
-            .where('categoryId', isNull: true)
-            .orderBy('priority')
-            .get();
-
-    final emptySnapshot =
-        await FirebaseFirestore.instance
-            .collection('categories')
-            .where('active', isEqualTo: true)
-            .where('categoryId', isEqualTo: '')
-            .orderBy('priority')
-            .get();
-
-    final allDocs = [...nullSnapshot.docs, ...emptySnapshot.docs];
-    final seen = <String>{};
-
-    return allDocs.where((doc) => seen.add(doc.id)).map((doc) {
-      final data = doc.data();
-      return Category(
-        id: doc.id,
-        name: data['name'],
-        categoryId: data['categoryId'],
-        imageUrl: data['imageUrl'],
-        description: data['description'],
-        priority: data['priority'],
-        active: data['active'],
-        createdAt: (data['createdAt'] as Timestamp).toDate(),
-      );
-    }).toList();
-  }
-
-  Widget buildCategoryList(List<Category> categories) {
-    final int half = (categories.length / 2).ceil();
+    if (categories.isEmpty) return const SizedBox();
     return SizedBox(
-      height: 220,
+      height: 200,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(half, (index) {
-            final top = categories[index];
-            final bottom =
-                (index + half < categories.length)
-                    ? categories[index + half]
-                    : null;
-
-            return Container(
-              width: 90,
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              child: Column(
-                children: [
-                  buildCategoryItem(context, top),
-                  const SizedBox(height: 20),
-                  if (bottom != null) buildCategoryItem(context, bottom),
-                ],
-              ),
-            );
-          }),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(children: _buildCategoryPairs(categories)),
       ),
     );
   }
 
-  Widget buildCategoryItem(BuildContext context, Category category) {
+  List<Widget> _buildCategoryPairs(List<Category> categories) {
+    final List<Widget> pairs = [];
+    final int half = (categories.length / 2).ceil();
+
+    for (int i = 0; i < half; i++) {
+      final top = categories[i];
+      final bottom =
+          (i + half < categories.length) ? categories[i + half] : null;
+
+      pairs.add(
+        Container(
+          width: 90,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              buildCategoryItem(top),
+              const SizedBox(height: 12),
+              if (bottom != null) buildCategoryItem(bottom),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return pairs;
+  }
+
+  Widget buildCategoryItem(Category category) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -517,16 +486,18 @@ class _HomePageState extends State<HomePage> {
           Hero(
             tag: category.id,
             child: CircleAvatar(
-              radius: 30,
+              radius: 33,
               backgroundImage: NetworkImage(category.imageUrl),
               backgroundColor: Colors.grey[200],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             category.name,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
