@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../models/cake_attribute.dart';
-import '../../models/extra_attributes.dart';
 import '../../models/product.dart';
-import '../../models/shape.dart';
-import '../../models/variant.dart'; // Ensure this contains all sub-models properly
+import '../../widgets/product_card.dart';
+import '../product_detail_page.dart'; // Update path as needed
 
 class ProductsByCategoryGridPage extends StatelessWidget {
   final String categoryId;
@@ -40,11 +38,24 @@ class ProductsByCategoryGridPage extends StatelessWidget {
                 crossAxisCount: 2,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.68,
+                childAspectRatio: 0.85,
               ),
               itemBuilder: (_, index) {
                 final product = products[index];
-                return _buildProductCard(product);
+                return ProductCard(
+                  productData: product.toJson(),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ProductDetailPage(
+                              productData: product.toJson(),
+                            ),
+                      ),
+                    );
+                  },
+                );
               },
             ),
           );
@@ -54,89 +65,16 @@ class ProductsByCategoryGridPage extends StatelessWidget {
   }
 
   Future<List<Product>> fetchProductsByTopCategory(String categoryId) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('products')
-        .where('categoryId', isEqualTo: categoryId)
-        .where('isAvailable', isEqualTo: true)
-        .get();
-
-    print("Fetched ${snapshot.docs.length} products for $categoryId");
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('products')
+            .where('categoryId', isEqualTo: categoryId)
+            .where('available', isEqualTo: true)
+            .get();
 
     return snapshot.docs.map((doc) {
       final data = doc.data();
-      print("Product found: ${data['name']}");
-
-      return Product(
-        id: doc.id,
-        name: data['name'],
-        categoryId: data['categoryId'],
-        subCategoryIds: List<String>.from(data['subCategoryIds']),
-        productType: data['productType'],
-        imageUrls: List<String>.from(data['imageUrls']),
-        productDescription: List<String>.from(data['productDescription']),
-        careInstruction: List<String>.from(data['careInstruction']),
-        deliveryInformation: List<String>.from(data['deliveryInformation']),
-        tags: List<String>.from(data['tags']),
-        isAvailable: data['isAvailable'],
-        stockQuantity: data['stockQuantity'],
-        popularityScore: data['popularityScore'],
-        reviews: [],
-        extraAttributes: null,
-        createdAt: (data['createdAt'] as Timestamp).toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        createdBy: data['createdBy'] ?? '',
-      );
+      return Product.fromJson(data..['id'] = doc.id); // Ensure `id` is set
     }).toList();
-  }
-
-  Widget _buildProductCard(Product product) {
-    double? price;
-
-    if (product.productType.contains("cake") &&
-        product.extraAttributes?.cakeAttribute?.defaultVariant.price != null) {
-      price = product.extraAttributes!.cakeAttribute!.defaultVariant.price;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        // TODO: Navigate to product detail page
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 3,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                product.imageUrls.isNotEmpty
-                    ? product.imageUrls.first
-                    : 'https://via.placeholder.com/150',
-                height: 140,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                product.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text(
-                price != null ? '₹${price.toStringAsFixed(0)}' : 'Price not available',
-                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

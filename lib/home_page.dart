@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -407,22 +408,70 @@ class _HomePageState extends State<HomePage> {
   ];
 
   Widget buildSearchBar(BuildContext context) {
+    final List<String> hints = [
+      "Search for cakes...",
+      "Search for gifts...",
+      "Search for flowers...",
+      "Search for toys...",
+      "Search for celebration items...",
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: TextField(
-        onSubmitted: (query) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SearchResultsPage(query: query),
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          TextField(
+            style: const TextStyle(fontSize: 16),
+            onSubmitted: (query) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SearchResultsPage(query: query),
+                ),
+              );
+            },
+            decoration: InputDecoration(
+              hintText: "",
+              prefixIcon: const Icon(Icons.search),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 14,
+                horizontal: 48,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          );
-        },
-        decoration: InputDecoration(
-          hintText: "Search for cakes, gifts, flowers...",
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+          ),
+
+          // Animated hint centered in TextField
+          Positioned.fill(
+            left: 48, // space for prefix icon
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: AnimatedTextKit(
+                  animatedTexts:
+                      hints
+                          .map(
+                            (text) => TyperAnimatedText(
+                              text,
+                              textStyle: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey.shade700, // slightly darker
+                              ),
+                              speed: const Duration(milliseconds: 60),
+                            ),
+                          )
+                          .toList(),
+                  repeatForever: true,
+                  pause: const Duration(milliseconds: 1500),
+                  isRepeatingAnimation: true,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
