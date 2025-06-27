@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import '../models/product.dart';
 import '../models/review.dart';
+import '../widgets/product_card.dart';
 import 'free_message_card_page.dart';
 
 class ProductDetailPage extends StatefulWidget {
@@ -27,6 +29,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   String? _cakeMessage;
   int? _expandedTileIndex;
   late Future<List<Review>> _reviewsFuture;
+  late Future<List<Product>> _similarProductsFuture;
 
   @override
   void initState() {
@@ -35,6 +38,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     _startAutoScroll();
     _getCurrentLocation();
     _reviewsFuture = fetchProductReviews(widget.productData['id']);
+    _similarProductsFuture = fetchSimilarProductsByTags(
+      currentProductId: widget.productData['id'],
+      tags: List<String>.from(widget.productData['tags'] ?? []),
+    ).then((products) {
+      products.shuffle(); // Shuffle once, here
+      return products;
+    });
   }
 
   @override
@@ -169,6 +179,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
 
               // You may also like section
+              buildSimilarProductsSection(),
             ],
           ),
         ),
@@ -1279,6 +1290,105 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         .map((item) => Review.fromJson(item as Map<String, dynamic>))
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt)); // sort newest first
+  }
+
+  Widget buildSimilarProductsSection() {
+    return FutureBuilder<List<Product>>(
+      future: _similarProductsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text("No similar products found."),
+          );
+        }
+
+        final products = snapshot.data!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+              child: Text(
+                "You May Also Like",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(
+              height: 190,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 16),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+
+                  return ProductCard(
+                    productData: product.toJson(),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => ProductDetailPage(
+                                productData: product.toJson(),
+                              ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<List<Product>> fetchSimilarProductsByTags({
+    required String currentProductId,
+    required List<String> tags,
+    int limit = 12,
+  }) async {
+    if (tags.isEmpty) {
+      debugPrint("No tags provided");
+      return [];
+    }
+
+    debugPrint("Fetching products with tags: $tags");
+
+    final querySnapshot =
+        await FirebaseFirestore.instance
+            .collection('products')
+            .where('tags', arrayContainsAny: tags)
+            .limit(limit)
+            .get();
+
+    debugPrint("Fetched ${querySnapshot.docs.length} similar products");
+
+    final similarProducts =
+        querySnapshot.docs
+            .where((doc) => doc.id != currentProductId)
+            .map((doc) {
+              try {
+                return Product.fromJson(doc.data());
+              } catch (e) {
+                debugPrint("Error parsing product with id ${doc.id}: $e");
+                return null;
+              }
+            })
+            .whereType<Product>() // removes nulls
+            .toList();
+
+    debugPrint("Parsed ${similarProducts.length} valid similar products");
+
+    return similarProducts;
   }
 }
 

@@ -3,7 +3,7 @@ class Variant {
   final int tier;
   final double price;
   final double? oldPrice;
-  final double discount;  // updated to double
+  final double discount; // updated to double
   final String sku;
 
   Variant({
@@ -16,12 +16,14 @@ class Variant {
   });
 
   factory Variant.fromJson(Map<String, dynamic> json) => Variant(
-    weight: json['weight'],
-    tier: json['tier'],
-    price: (json['price'] as num).toDouble(),
-    oldPrice: json['oldPrice'] != null ? (json['oldPrice'] as num).toDouble() : null,
-    discount: (json['discount'] as num).toDouble(),
-    sku: json['sku'],
+    weight: json['weight'] ?? '',
+    tier: json['tier'] ?? 1,
+    price: (json['price'] is num) ? (json['price'] as num).toDouble() : 0.0,
+    oldPrice:
+        (json['oldPrice'] is num) ? (json['oldPrice'] as num).toDouble() : 0.0,
+    discount:
+        (json['discount'] is num) ? (json['discount'] as num).toDouble() : 0.0,
+    sku: json['sku'] ?? '',
   );
 
   Map<String, dynamic> toJson() => {
