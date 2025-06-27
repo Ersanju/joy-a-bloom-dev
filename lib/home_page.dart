@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/signup_login_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
+import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
 import 'models/category.dart';
 import 'pages/home/delivery_location_page.dart';
@@ -207,68 +208,73 @@ class _HomePageState extends State<HomePage> {
       setState(() => isHomeLoading = true);
 
       // 1. Categories (null and empty categoryId)
-      final nullSnapshot = await FirebaseFirestore.instance
-          .collection('categories')
-          .where('active', isEqualTo: true)
-          .where('categoryId', isNull: true)
-          .orderBy('priority')
-          .get();
+      final nullSnapshot =
+          await FirebaseFirestore.instance
+              .collection('categories')
+              .where('active', isEqualTo: true)
+              .where('categoryId', isNull: true)
+              .orderBy('priority')
+              .get();
 
-      final emptySnapshot = await FirebaseFirestore.instance
-          .collection('categories')
-          .where('active', isEqualTo: true)
-          .where('categoryId', isEqualTo: '')
-          .orderBy('priority')
-          .get();
+      final emptySnapshot =
+          await FirebaseFirestore.instance
+              .collection('categories')
+              .where('active', isEqualTo: true)
+              .where('categoryId', isEqualTo: '')
+              .orderBy('priority')
+              .get();
 
       final allDocs = [...nullSnapshot.docs, ...emptySnapshot.docs];
       final seen = <String>{};
 
-      categories = allDocs
-          .where((doc) => seen.add(doc.id))
-          .map((doc) {
-        final data = doc.data();
-        return Category(
-          id: doc.id,
-          name: data['name'],
-          categoryId: data['categoryId'],
-          imageUrl: data['imageUrl'],
-          description: data['description'],
-          priority: data['priority'],
-          active: data['active'],
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
-        );
-      })
-          .toList();
+      categories =
+          allDocs.where((doc) => seen.add(doc.id)).map((doc) {
+            final data = doc.data();
+            return Category(
+              id: doc.id,
+              name: data['name'],
+              categoryId: data['categoryId'],
+              imageUrl: data['imageUrl'],
+              description: data['description'],
+              priority: data['priority'],
+              active: data['active'],
+              createdAt: (data['createdAt'] as Timestamp).toDate(),
+            );
+          }).toList();
 
       // 2. Other Firestore collections
-      final bannerFuture = FirebaseFirestore.instance
-          .collection('banners')
-          .where('active', isEqualTo: true)
-          .get();
+      final bannerFuture =
+          FirebaseFirestore.instance
+              .collection('banners')
+              .where('active', isEqualTo: true)
+              .get();
 
-      final featuredFuture = FirebaseFirestore.instance
-          .collection('products')
-          .where('tags', arrayContains: 'featured')
-          .get();
+      final featuredFuture =
+          FirebaseFirestore.instance
+              .collection('products')
+              .where('tags', arrayContains: 'featured')
+              .get();
 
-      final newArrivalsFuture = FirebaseFirestore.instance
-          .collection('products')
-          .orderBy('createdAt', descending: true)
-          .limit(10)
-          .get();
+      final newArrivalsFuture =
+          FirebaseFirestore.instance
+              .collection('products')
+              .orderBy('createdAt', descending: true)
+              .limit(10)
+              .get();
 
-      final youMayAlsoLikeFuture = FirebaseFirestore.instance
-          .collection('products')
-          .where('tags', arrayContainsAny: ['recommended', 'trending'])
-          .limit(10)
-          .get();
+      final youMayAlsoLikeFuture =
+          FirebaseFirestore.instance
+              .collection('products')
+              .where('tags', arrayContainsAny: ['recommended', 'trending'])
+              .limit(10)
+              .get();
 
-      final appReviewsFuture = FirebaseFirestore.instance
-          .collection('app_reviews')
-          .orderBy('createdAt', descending: true)
-          .limit(5)
-          .get();
+      final appReviewsFuture =
+          FirebaseFirestore.instance
+              .collection('app_reviews')
+              .orderBy('createdAt', descending: true)
+              .limit(5)
+              .get();
 
       // 3. Run all futures in parallel
       final results = await Future.wait([
@@ -287,25 +293,30 @@ class _HomePageState extends State<HomePage> {
 
       // 4. Update state with all fetched data
       setState(() {
-        bannerImages = bannerSnapshot.docs
-            .map((doc) => doc['imageUrl'] as String)
-            .toList();
+        bannerImages =
+            bannerSnapshot.docs
+                .map((doc) => doc['imageUrl'] as String)
+                .toList();
 
-        featuredProducts = featuredSnapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
+        featuredProducts =
+            featuredSnapshot.docs
+                .map((doc) => doc.data() as Map<String, dynamic>)
+                .toList();
 
-        newArrivals = newArrivalsSnapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
+        newArrivals =
+            newArrivalsSnapshot.docs
+                .map((doc) => doc.data() as Map<String, dynamic>)
+                .toList();
 
-        youMayAlsoLikeProducts = youMayAlsoLikeSnapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
+        youMayAlsoLikeProducts =
+            youMayAlsoLikeSnapshot.docs
+                .map((doc) => doc.data() as Map<String, dynamic>)
+                .toList();
 
-        appReviews = appReviewsSnapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
+        appReviews =
+            appReviewsSnapshot.docs
+                .map((doc) => doc.data() as Map<String, dynamic>)
+                .toList();
 
         isHomeLoading = false;
       });
@@ -592,14 +603,25 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         SizedBox(
-          height: 190, // increased to accommodate stacked card layout
+          height: 190,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: featuredProducts.length,
             padding: const EdgeInsets.only(left: 16),
             itemBuilder: (context, index) {
-              final product = featuredProducts[index];
-              return ProductCard(productData: product, onTap: () {});
+              final productData = featuredProducts[index];
+              return ProductCard(
+                productData: productData,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => ProductDetailPage(productData: productData),
+                    ),
+                  );
+                },
+              );
             },
           ),
         ),
@@ -632,7 +654,13 @@ class _HomePageState extends State<HomePage> {
               return ProductCard(
                 productData: productData,
                 onTap: () {
-                  // Navigate to product detail
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => ProductDetailPage(productData: productData),
+                    ),
+                  );
                 },
               );
             },
@@ -667,7 +695,13 @@ class _HomePageState extends State<HomePage> {
               return ProductCard(
                 productData: productData,
                 onTap: () {
-                  // Navigate to product details
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => ProductDetailPage(productData: productData),
+                    ),
+                  );
                 },
               );
             },
