@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/signup_login_page.dart';
+import 'package:joy_a_bloom_dev/pages/category/category_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
@@ -402,7 +403,7 @@ class _HomePageState extends State<HomePage> {
 
   List<Widget> get _pages => [
     buildHomeContent(),
-    Text('data'),
+    CategoryPage(),
     Text('data'),
     Text('data'),
   ];
