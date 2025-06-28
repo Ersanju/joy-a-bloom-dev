@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/reminder_list_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/reminder_page.dart';
 import 'edit_profile_page.dart';
 
 class AccountPage extends StatefulWidget {
@@ -150,7 +152,7 @@ class _AccountPageState extends State<AccountPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => Text('data')),
+                    MaterialPageRoute(builder: (_) => ReminderListPage()),
                   );
                 },
               ),
