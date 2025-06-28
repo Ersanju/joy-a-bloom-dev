@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/account_page.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/signup_login_page.dart';
 import 'package:joy_a_bloom_dev/pages/category/category_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
@@ -405,7 +406,7 @@ class _HomePageState extends State<HomePage> {
     buildHomeContent(),
     CategoryPage(),
     Text('data'),
-    Text('data'),
+    AccountPage(),
   ];
 
   Widget buildSearchBar(BuildContext context) {
