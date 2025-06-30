@@ -1,47 +1,25 @@
+import 'chocolate_variant.dart';
+
 class ChocolateAttribute {
-  final String chocolateType;
   final String brand;
-  final double weightInGrams;
-  final int quantity;
-  final bool isSugarFree;
-  final double price;
-  final double? oldPrice;
-  final double discount;
-  final String sku;
+  final List<ChocolateVariant> variants;
 
   ChocolateAttribute({
-    required this.chocolateType,
     required this.brand,
-    required this.weightInGrams,
-    required this.quantity,
-    required this.isSugarFree,
-    required this.price,
-    required this.oldPrice,
-    required this.discount,
-    required this.sku,
+    required this.variants,
   });
 
-  factory ChocolateAttribute.fromJson(Map<String, dynamic> json) => ChocolateAttribute(
-    chocolateType: json['chocolateType'],
-    brand: json['brand'],
-    weightInGrams: (json['weightInGrams'] as num).toDouble(),
-    quantity: json['quantity'],
-    isSugarFree: json['isSugarFree'] ?? false,
-    price: (json['price'] as num).toDouble(),
-    oldPrice: json['oldPrice'] != null ? (json['oldPrice'] as num).toDouble() : null,
-    discount: (json['discount'] as num).toDouble(),
-    sku: json['sku'],
-  );
+  factory ChocolateAttribute.fromJson(Map<String, dynamic> json) =>
+      ChocolateAttribute(
+        brand: json['brand'] ?? '',
+        variants: (json['variants'] as List<dynamic>?)
+            ?.map((v) => ChocolateVariant.fromJson(v))
+            .toList() ??
+            [],
+      );
 
   Map<String, dynamic> toJson() => {
-    'chocolateType': chocolateType,
     'brand': brand,
-    'weightInGrams': weightInGrams,
-    'quantity': quantity,
-    'isSugarFree': isSugarFree,
-    'price': price,
-    'oldPrice': oldPrice,
-    'discount': discount,
-    'sku': sku,
+    'variants': variants.map((v) => v.toJson()).toList(),
   };
 }

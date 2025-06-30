@@ -13,6 +13,7 @@ import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
 import 'models/category.dart';
+import 'models/product.dart';
 import 'pages/home/delivery_location_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -38,6 +39,7 @@ class _HomePageState extends State<HomePage> {
 
   bool isLoadingBanners = true;
   Timer? _timer;
+  List<Product> chocolateProducts = [];
 
   @override
   void initState() {
@@ -55,6 +57,11 @@ class _HomePageState extends State<HomePage> {
           curve: Curves.easeInOut,
         );
       }
+    });
+    fetchChocolateBars().then((data) {
+      setState(() {
+        chocolateProducts = data;
+      });
     });
   }
 
@@ -172,6 +179,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
           buildCategorySection(),
           buildBannerSlider(),
+          chocolateBarSection(chocolateProducts),
           SizedBox(height: 10),
           featuredOffersSection(context),
           SizedBox(height: 10),
@@ -611,6 +619,286 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
+  }
+
+  Widget chocolateBarSection(List<Product> products) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+          child: Text(
+            "Shop For Chocolate Bars",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ),
+        SizedBox(
+          height: 250,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              final variant =
+                  product.extraAttributes?.chocolateAttribute?.variants.first;
+
+              double? price = variant?.price;
+              double? oldPrice = variant?.oldPrice;
+
+              String? discountLabel;
+              if (price != null && oldPrice != null && oldPrice > price) {
+                final discountPercent = ((oldPrice - price) / oldPrice) * 100;
+                if (discountPercent >= 10) {
+                  discountLabel = "${discountPercent.toStringAsFixed(0)}% OFF";
+                } else {
+                  final diff = oldPrice - price;
+                  discountLabel = "₹${diff.toStringAsFixed(0)} OFF";
+                }
+              }
+
+              return Container(
+                width: 120,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image with discount and product tap
+                    GestureDetector(
+                      onTap:
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => Text('data')),
+                          ),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              product.imageUrls.first,
+                              height: 110,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          if (discountLabel != null)
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  discountLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Price and Name (with name tap)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (variant != null)
+                            Row(
+                              children: [
+                                Text(
+                                  "₹${variant.price.toStringAsFixed(0)}",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (variant.oldPrice != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4),
+                                    child: Text(
+                                      "₹${variant.oldPrice!.toStringAsFixed(0)}",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          const SizedBox(height: 2),
+                          GestureDetector(
+                            onTap:
+                                () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => Text('data'),
+                                  ),
+                                ),
+                            child: Text(
+                              product.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Variant weight (opens bottom sheet)
+                    if (variant != null)
+                      GestureDetector(
+                        onTap: () => showVariantsBottomSheet(context, product),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Row(
+                            children: [
+                              Text(
+                                "${variant.weightInGrams.toInt()}g",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.green,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      bottom: 6,
+                      right: 6,
+                      child: InkWell(
+                        onTap: () => addToCart(product),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green,
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: const Icon(
+                            Icons.add,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void addToCart(Product product) {
+    // TODO: Implement cart logic here
+    print("Added to cart: ${product.name}");
+  }
+
+  void showVariantsBottomSheet(BuildContext context, Product product) {
+    final variants =
+        product.extraAttributes?.chocolateAttribute?.variants ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                product.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListView.builder(
+                shrinkWrap: true,
+                itemCount: variants.length,
+                itemBuilder: (context, index) {
+                  final v = variants[index];
+                  return ListTile(
+                    leading: Image.network(product.imageUrls.first, width: 40),
+                    title: Text("${v.weightInGrams.toInt()} g"),
+                    subtitle: Text(
+                      "₹${v.price}  "
+                      "${v.oldPrice != null ? "₹${v.oldPrice}" : ""}",
+                    ),
+                    trailing: TextButton(
+                      onPressed: () {},
+                      child: const Text("Add"),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Done"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Product>> fetchChocolateBars() async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('products')
+            .where('categoryId', isEqualTo: 'cat_chocolate')
+            .get();
+
+    return snapshot.docs.map((doc) => Product.fromJson(doc.data())).toList();
   }
 
   Widget featuredOffersSection(BuildContext context) {
