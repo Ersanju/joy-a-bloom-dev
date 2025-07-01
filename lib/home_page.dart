@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/account_page.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/signup_login_page.dart';
 import 'package:joy_a_bloom_dev/pages/category/category_page.dart';
+import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
@@ -681,13 +682,17 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         GestureDetector(
-                          onTap:
-                              () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const Text("Product Details"),
-                                ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => ChocolateProductDetailPage(
+                                      product: product,
+                                    ),
                               ),
+                            );
+                          },
                           child: Stack(
                             children: [
                               ClipRRect(
