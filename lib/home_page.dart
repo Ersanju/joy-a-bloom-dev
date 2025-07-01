@@ -40,6 +40,8 @@ class _HomePageState extends State<HomePage> {
   bool isLoadingBanners = true;
   Timer? _timer;
   List<Product> chocolateProducts = [];
+  Map<String, int> cartQuantities = {};
+  Map<String, int> variantQuantities = {}; // key: productId_sku
 
   @override
   void initState() {
@@ -626,14 +628,14 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Text(
             "Shop For Chocolate Bars",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
         SizedBox(
-          height: 250,
+          height: 210,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: products.length,
@@ -642,19 +644,22 @@ class _HomePageState extends State<HomePage> {
               final variant =
                   product.extraAttributes?.chocolateAttribute?.variants.first;
 
-              double? price = variant?.price;
-              double? oldPrice = variant?.oldPrice;
+              if (variant == null) return const SizedBox.shrink();
 
+              final price = variant.price;
+              final oldPrice = variant.oldPrice;
               String? discountLabel;
-              if (price != null && oldPrice != null && oldPrice > price) {
+
+              if (oldPrice != null && oldPrice > price) {
                 final discountPercent = ((oldPrice - price) / oldPrice) * 100;
-                if (discountPercent >= 10) {
-                  discountLabel = "${discountPercent.toStringAsFixed(0)}% OFF";
-                } else {
-                  final diff = oldPrice - price;
-                  discountLabel = "₹${diff.toStringAsFixed(0)} OFF";
-                }
+                discountLabel =
+                    discountPercent >= 10
+                        ? "${discountPercent.toStringAsFixed(0)}% OFF"
+                        : "₹${(oldPrice - price).toStringAsFixed(0)} OFF";
               }
+
+              final variantId = "${product.id}_${variant.sku}";
+              final cartQty = variantQuantities[variantId] ?? 0;
 
               return Container(
                 width: 120,
@@ -664,162 +669,258 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: const Color.fromRGBO(128, 128, 128, 0.2),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Stack(
                   children: [
-                    // Image with discount and product tap
-                    GestureDetector(
-                      onTap:
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => Text('data')),
-                          ),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
-                            ),
-                            child: Image.network(
-                              product.imageUrls.first,
-                              height: 110,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          if (discountLabel != null)
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    bottomRight: Radius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  discountLabel,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const Text("Product Details"),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    // Price and Name (with name tap)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 4,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (variant != null)
-                            Row(
-                              children: [
-                                Text(
-                                  "₹${variant.price.toStringAsFixed(0)}",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(12),
                                 ),
-                                if (variant.oldPrice != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 4),
+                                child: Image.network(
+                                  product.imageUrls.first,
+                                  height: 110,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              if (discountLabel != null)
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(12),
+                                        bottomRight: Radius.circular(8),
+                                      ),
+                                    ),
                                     child: Text(
-                                      "₹${variant.oldPrice!.toStringAsFixed(0)}",
+                                      discountLabel,
                                       style: const TextStyle(
+                                        color: Colors.white,
                                         fontSize: 11,
-                                        color: Colors.grey,
-                                        decoration: TextDecoration.lineThrough,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                              ],
-                            ),
-                          const SizedBox(height: 2),
-                          GestureDetector(
-                            onTap:
-                                () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => Text('data'),
-                                  ),
                                 ),
-                            child: Text(
-                              product.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-
-                    // Variant weight (opens bottom sheet)
-                    if (variant != null)
-                      GestureDetector(
-                        onTap: () => showVariantsBottomSheet(context, product),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Row(
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "${variant.weightInGrams.toInt()}g",
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    "₹${price.toStringAsFixed(0)}",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  if (oldPrice != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 4),
+                                      child: Text(
+                                        "₹${oldPrice.toStringAsFixed(0)}",
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey,
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                              const Spacer(),
-                              const Icon(
-                                Icons.arrow_drop_down,
-                                color: Colors.green,
-                                size: 18,
+                              const SizedBox(height: 2),
+                              GestureDetector(
+                                onTap:
+                                    () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (_) =>
+                                                const Text("Product Details"),
+                                      ),
+                                    ),
+                                child: Text(
+                                  product.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    Positioned(
-                      bottom: 6,
-                      right: 6,
-                      child: InkWell(
-                        onTap: () => addToCart(product),
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.green,
-                          ),
-                          padding: const EdgeInsets.all(4),
-                          child: const Icon(
-                            Icons.add,
-                            size: 18,
-                            color: Colors.white,
+                        GestureDetector(
+                          onTap: () async {
+                            await showVariantsBottomSheet(context, product);
+                            setState(() {}); // Rebuild to reflect quantity
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 6,
+                            ),
+                            color:
+                                Colors
+                                    .transparent, // Important: Makes entire area tappable
+                            child: Row(
+                              children: [
+                                Text(
+                                  "${variant.weightInGrams.toInt()}g",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                                const Spacer(),
+                                const Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Colors.green,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                      ],
+                    ),
+                    Positioned(
+                      top: 95,
+                      right: 1,
+                      child:
+                          cartQty == 0
+                              ? GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    variantQuantities[variantId] = 1;
+                                  });
+                                  addToCart(product, 1, variantId);
+                                },
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: Colors.green,
+                                      width: 1.5,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(
+                                    Icons.add,
+                                    size: 24,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              )
+                              : Container(
+                                height: 28,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: Colors.green,
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          if (cartQty > 1) {
+                                            variantQuantities[variantId] =
+                                                cartQty - 1;
+                                            addToCart(
+                                              product,
+                                              cartQty - 1,
+                                              variantId,
+                                            );
+                                          } else {
+                                            variantQuantities.remove(variantId);
+                                            removeFromCart(product, variantId);
+                                          }
+                                        });
+                                      },
+                                      child: const Icon(
+                                        Icons.remove,
+                                        size: 20,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: Text(
+                                        '$cartQty',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          variantQuantities[variantId] =
+                                              cartQty + 1;
+                                        });
+                                        addToCart(
+                                          product,
+                                          cartQty + 1,
+                                          variantId,
+                                        );
+                                      },
+                                      child: const Icon(
+                                        Icons.add,
+                                        size: 20,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                     ),
                   ],
                 ),
@@ -831,61 +932,274 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void addToCart(Product product) {
-    // TODO: Implement cart logic here
-    print("Added to cart: ${product.name}");
+  void addToCart(Product product, int quantity, String variantId) {
+    debugPrint("Added to cart: ${product.name} ($variantId) → $quantity");
   }
 
-  void showVariantsBottomSheet(BuildContext context, Product product) {
+  void removeFromCart(Product product, String variantId) {
+    debugPrint("Removed from cart: ${product.name} ($variantId)");
+  }
+
+  Future<void> showVariantsBottomSheet(BuildContext context, Product product) {
     final variants =
         product.extraAttributes?.chocolateAttribute?.variants ?? [];
 
-    showModalBottomSheet(
+    return showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                product.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListView.builder(
-                shrinkWrap: true,
-                itemCount: variants.length,
-                itemBuilder: (context, index) {
-                  final v = variants[index];
-                  return ListTile(
-                    leading: Image.network(product.imageUrls.first, width: 40),
-                    title: Text("${v.weightInGrams.toInt()} g"),
-                    subtitle: Text(
-                      "₹${v.price}  "
-                      "${v.oldPrice != null ? "₹${v.oldPrice}" : ""}",
-                    ),
-                    trailing: TextButton(
-                      onPressed: () {},
-                      child: const Text("Add"),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Done"),
-              ),
-            ],
-          ),
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          maxChildSize: 0.7,
+          minChildSize: 0.3,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                  child: Column(
+                    children: [
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ✅ Scrollable variant list inside Expanded
+                      Expanded(
+                        child: ListView.builder(
+                          controller: scrollController,
+                          itemCount: variants.length,
+                          itemBuilder: (context, index) {
+                            final v = variants[index];
+                            final variantId = "${product.id}_${v.sku}";
+                            final qty = variantQuantities[variantId] ?? 0;
+                            final pricePerGram =
+                                v.weightInGrams > 0
+                                    ? v.price / v.weightInGrams
+                                    : 0.0;
+
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 60,
+                                  height: 60,
+                                  padding: const EdgeInsets.all(1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      product.imageUrls.first,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      "₹${v.price.toStringAsFixed(0)}",
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (v.oldPrice != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: Text(
+                                          "₹${v.oldPrice!.toStringAsFixed(0)}",
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                            decoration:
+                                                TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${v.weightInGrams.toInt()} g",
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    Text(
+                                      "₹${pricePerGram.toStringAsFixed(2)} / g",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing:
+                                    qty == 0
+                                        ? TextButton(
+                                          onPressed: () {
+                                            setState(() {
+                                              variantQuantities[variantId] = 1;
+                                            });
+                                            addToCart(product, 1, variantId);
+                                          },
+                                          style: TextButton.styleFrom(
+                                            backgroundColor:
+                                                Colors.green.shade50,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "Add",
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        )
+                                        : Container(
+                                          height: 34,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            border: Border.all(
+                                              color: Colors.green,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    if (qty > 1) {
+                                                      variantQuantities[variantId] =
+                                                          qty - 1;
+                                                      addToCart(
+                                                        product,
+                                                        qty - 1,
+                                                        variantId,
+                                                      );
+                                                    } else {
+                                                      variantQuantities.remove(
+                                                        variantId,
+                                                      );
+                                                      removeFromCart(
+                                                        product,
+                                                        variantId,
+                                                      );
+                                                    }
+                                                  });
+                                                },
+                                                child: const Icon(
+                                                  Icons.remove,
+                                                  size: 24,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                    ),
+                                                child: Text(
+                                                  '$qty',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              ),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    variantQuantities[variantId] =
+                                                        qty + 1;
+                                                  });
+                                                  addToCart(
+                                                    product,
+                                                    qty + 1,
+                                                    variantId,
+                                                  );
+                                                },
+                                                child: const Icon(
+                                                  Icons.add,
+                                                  size: 24,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ✅ Fixed "Done" button at bottom
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                              vertical: 10,
+                            ),
+                            child: Text(
+                              "Done",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
