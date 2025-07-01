@@ -5,7 +5,8 @@ class ChocolateVariant {
   final bool isSugarFree;
   final double price;
   final double? oldPrice;
-  final double discount;
+  final int stockQuantity;
+  final bool isAvailable;
 
   ChocolateVariant({
     required this.sku,
@@ -14,20 +15,21 @@ class ChocolateVariant {
     required this.isSugarFree,
     required this.price,
     this.oldPrice,
-    required this.discount,
+    required this.stockQuantity,
+    required this.isAvailable,
   });
 
   factory ChocolateVariant.fromJson(Map<String, dynamic> json) =>
       ChocolateVariant(
         sku: json['sku'],
-        weightInGrams: (json['weightInGrams'] ?? 0).toDouble(),
-        quantity: json['quantity'] ?? 1,
-        isSugarFree: json['isSugarFree'] ?? false,
-        price: (json['price'] ?? 0).toDouble(),
-        oldPrice: json['oldPrice'] != null
-            ? (json['oldPrice'] as num).toDouble()
-            : null,
-        discount: (json['discount'] ?? 0).toDouble(),
+        weightInGrams: (json['weightInGrams'] as num).toDouble(),
+        quantity: json['quantity'],
+        isSugarFree: json['isSugarFree'],
+        price: (json['price'] as num).toDouble(),
+        oldPrice:
+        json['oldPrice'] != null ? (json['oldPrice'] as num).toDouble() : null,
+        stockQuantity: json['stockQuantity'],
+        isAvailable: json['isAvailable'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -36,7 +38,8 @@ class ChocolateVariant {
     'quantity': quantity,
     'isSugarFree': isSugarFree,
     'price': price,
-    'oldPrice': oldPrice,
-    'discount': discount,
+    if (oldPrice != null) 'oldPrice': oldPrice,
+    'stockQuantity': stockQuantity,
+    'isAvailable': isAvailable,
   };
 }

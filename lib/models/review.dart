@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Review {
   final String userId;
   final String userName;
@@ -22,18 +20,14 @@ class Review {
   });
 
   factory Review.fromJson(Map<String, dynamic> json) => Review(
-    userId: json['userId'] ?? '',
-    userName: json['userName'] ?? '',
-    imageUrls: List<String>.from(json['imageUrls'] ?? []),
-    rating: (json['rating'] is num)
-        ? (json['rating'] as num).toDouble()
-        : double.tryParse(json['rating'].toString()) ?? 0.0,
-    comment: json['comment'] ?? '',
-    occasion: json['occasion'] ?? '',
-    place: json['place'] ?? '',
-    createdAt: (json['createdAt'] is Timestamp)
-        ? (json['createdAt'] as Timestamp).toDate()
-        : DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now(),
+    userId: json['userId'],
+    userName: json['userName'],
+    imageUrls: List<String>.from(json['imageUrls']),
+    rating: (json['rating'] as num).toDouble(),
+    comment: json['comment'],
+    occasion: json['occasion'],
+    place: json['place'],
+    createdAt: DateTime.parse(json['createdAt']),
   );
 
   Map<String, dynamic> toJson() => {
@@ -44,6 +38,6 @@ class Review {
     'comment': comment,
     'occasion': occasion,
     'place': place,
-    'createdAt': Timestamp.fromDate(createdAt),
+    'createdAt': createdAt.toIso8601String(),
   };
 }

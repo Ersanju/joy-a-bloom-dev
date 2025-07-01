@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../models/product.dart';
 
@@ -14,6 +15,25 @@ class ChocolateProductDetailPage extends StatefulWidget {
 class _ChocolateProductDetailPageState
     extends State<ChocolateProductDetailPage> {
   int selectedPackIndex = 0;
+  List<Product> similarProducts = [];
+  bool isLoadingSimilar = true;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _loadSimilar();
+  }
+
+  void _loadSimilar() async {
+    final list = await fetchSimilarProducts(widget.product.categoryId);
+    // exclude self
+    list.removeWhere((p) => p.id == widget.product.id);
+    setState(() {
+      similarProducts = list;
+      isLoadingSimilar = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -377,6 +397,7 @@ class _ChocolateProductDetailPageState
             ),
 
             const SizedBox(height: 16),
+            buildSimilarProductsSection(similarProducts),
           ],
         ),
       ),
@@ -408,7 +429,11 @@ class _ChocolateProductDetailPageState
                     (variant?.oldPrice ?? 0) > (variant?.price ?? 0);
                 final discountLabel =
                     hasDiscount
-                        ? "${((variant!.oldPrice! - variant.price) / variant.oldPrice! * 100).toStringAsFixed(0)}% OFF"
+                        ? ((variant!.oldPrice! - variant.price) /
+                                    variant.oldPrice! *
+                                    100)
+                                .toStringAsFixed(0) +
+                            "% OFF"
                         : null;
 
                 return GestureDetector(
@@ -521,5 +546,15 @@ class _ChocolateProductDetailPageState
         ],
       ),
     );
+  }
+
+  Future<List<Product>> fetchSimilarProducts(String categoryId) async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('products')
+            .where('categoryId', isEqualTo: categoryId)
+            .get();
+
+    return snapshot.docs.map((doc) => Product.fromJson(doc.data())).toList();
   }
 }

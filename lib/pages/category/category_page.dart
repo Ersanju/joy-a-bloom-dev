@@ -242,8 +242,8 @@ class _CategoryPageState extends State<CategoryPage>
                                                             product['name'] ??
                                                             '';
                                                         final price =
-                                                            product['extraAttributes']?['cakeAttribute']?['defaultVariant']?['price'] ??
-                                                            '';
+                                                            product['extraAttributes']?['cakeAttribute']?['variants']?[0]?['price'] ?? '';
+
 
                                                         return GestureDetector(
                                                           onTap: () {

@@ -1,8 +1,9 @@
+import 'package:joy_a_bloom_dev/models/toy_attribute.dart';
+
 import 'cake_attribute.dart';
-import 'toy_attribute.dart';
-import 'gift_attribute.dart';
 import 'chocolate_attribute.dart';
 import 'decoration_attribute.dart';
+import 'gift_attribute.dart';
 
 class ExtraAttributes {
   final CakeAttribute? cakeAttribute;
@@ -41,7 +42,9 @@ class ExtraAttributes {
     if (cakeAttribute != null) 'cakeAttribute': cakeAttribute!.toJson(),
     if (toyAttribute != null) 'toyAttribute': toyAttribute!.toJson(),
     if (giftAttribute != null) 'giftAttribute': giftAttribute!.toJson(),
-    if (chocolateAttribute != null) 'chocolateAttribute': chocolateAttribute!.toJson(),
-    if (decorationAttribute != null) 'decorationAttribute': decorationAttribute!.toJson(),
+    if (chocolateAttribute != null)
+      'chocolateAttribute': chocolateAttribute!.toJson(),
+    if (decorationAttribute != null)
+      'decorationAttribute': decorationAttribute!.toJson(),
   };
 }

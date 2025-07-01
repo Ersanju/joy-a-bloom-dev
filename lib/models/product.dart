@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'review.dart';
+import 'package:flutter/foundation.dart';
+import 'package:joy_a_bloom_dev/models/review.dart';
+
 import 'extra_attributes.dart';
 
 class Product {
@@ -9,15 +10,15 @@ class Product {
   final List<String> subCategoryIds;
   final String productType;
   final List<String> imageUrls;
-  final List<String> productDescription;
-  final List<String> careInstruction;
-  final List<String> deliveryInformation;
   final List<String> tags;
   final bool isAvailable;
   final int stockQuantity;
   final int popularityScore;
-  final List<Review> reviews;
+  final List<String> productDescription;
+  final List<String> careInstruction;
+  final List<String> deliveryInformation;
   final ExtraAttributes? extraAttributes;
+  final List<Review> reviews;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String createdBy;
@@ -29,46 +30,46 @@ class Product {
     required this.subCategoryIds,
     required this.productType,
     required this.imageUrls,
-    required this.productDescription,
-    required this.careInstruction,
-    required this.deliveryInformation,
     required this.tags,
     required this.isAvailable,
     required this.stockQuantity,
     required this.popularityScore,
+    required this.productDescription,
+    required this.careInstruction,
+    required this.deliveryInformation,
+    required this.extraAttributes,
     required this.reviews,
-    this.extraAttributes,
     required this.createdAt,
     required this.updatedAt,
-    required this.createdBy
+    required this.createdBy,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
     id: json['id'],
     name: json['name'],
     categoryId: json['categoryId'],
-    subCategoryIds: List<String>.from(json['subCategoryIds'] ?? []),
-    productType: json['productType'] ?? '',
-    imageUrls: List<String>.from(json['imageUrls'] ?? []),
-    productDescription: List<String>.from(json['productDescription'] ?? []),
-    careInstruction: List<String>.from(json['careInstruction'] ?? []),
-    deliveryInformation: List<String>.from(json['deliveryInformation'] ?? []),
-    tags: List<String>.from(json['tags'] ?? []),
-    isAvailable: json['isAvailable'] ?? true,
-    stockQuantity: json['stockQuantity'] ?? 0,
-    popularityScore: json['popularityScore'] ?? 0,
-    reviews: (json['reviews'] as List?)?.map((e) => Review.fromJson(e)).toList() ?? [],
-    extraAttributes: json['extraAttributes'] != null
-        ? ExtraAttributes.fromJson(json['extraAttributes'])
-        : null,
-    createdAt: (json['createdAt'] is Timestamp)
-        ? (json['createdAt'] as Timestamp).toDate()
-        : DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now(),
-    updatedAt: (json['updatedAt'] is Timestamp)
-        ? (json['updatedAt'] as Timestamp).toDate()
-        : DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now(),
-    createdBy: json['createdBy'] ?? '',
-
+    subCategoryIds: List<String>.from(json['subCategoryIds']),
+    productType: json['productType'],
+    imageUrls: List<String>.from(json['imageUrls']),
+    tags: List<String>.from(json['tags']),
+    isAvailable: json['isAvailable'],
+    stockQuantity: json['stockQuantity'],
+    popularityScore: json['popularityScore'],
+    productDescription: List<String>.from(json['productDescription']),
+    careInstruction: List<String>.from(json['careInstruction']),
+    deliveryInformation: List<String>.from(json['deliveryInformation']),
+    extraAttributes:
+        json['extraAttributes'] != null
+            ? ExtraAttributes.fromJson(json['extraAttributes'])
+            : null,
+    reviews:
+        (json['reviews'] as List<dynamic>?)
+            ?.map((e) => Review.fromJson(e))
+            .toList() ??
+        [],
+    createdAt: DateTime.parse(json['createdAt']),
+    updatedAt: DateTime.parse(json['updatedAt']),
+    createdBy: json['createdBy'],
   );
 
   Map<String, dynamic> toJson() => {
@@ -78,17 +79,17 @@ class Product {
     'subCategoryIds': subCategoryIds,
     'productType': productType,
     'imageUrls': imageUrls,
-    'productDescription': productDescription,
-    'careInstruction': careInstruction,
-    'deliveryInformation': deliveryInformation,
     'tags': tags,
     'isAvailable': isAvailable,
     'stockQuantity': stockQuantity,
     'popularityScore': popularityScore,
-    'reviews': reviews.map((e) => e.toJson()).toList(),
+    'productDescription': productDescription,
+    'careInstruction': careInstruction,
+    'deliveryInformation': deliveryInformation,
     'extraAttributes': extraAttributes?.toJson(),
-    'createdAt': Timestamp.fromDate(createdAt),
-    'updatedAt': Timestamp.fromDate(updatedAt),
+    'reviews': reviews.map((e) => e.toJson()).toList(),
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
     'createdBy': createdBy,
   };
 }

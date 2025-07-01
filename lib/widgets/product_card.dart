@@ -4,19 +4,23 @@ class ProductCard extends StatelessWidget {
   final Map<String, dynamic> productData;
   final VoidCallback onTap;
 
-  const ProductCard({Key? key, required this.productData, required this.onTap})
-    : super(key: key);
+  const ProductCard({
+    super.key,
+    required this.productData,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final defaultVariant =
-        productData['extraAttributes']?['cakeAttribute']?['defaultVariant'];
-    final price = defaultVariant?['price'] ?? 0;
-    final oldPrice = defaultVariant?['oldPrice'] ?? 0;
+    final variant =
+        productData['extraAttributes']?['cakeAttribute']?['variants']?[0];
+    final price = variant?['price'] ?? 0;
+    final oldPrice = variant?['oldPrice'] ?? 0;
     final discount =
         (oldPrice > price)
             ? (((oldPrice - price) / oldPrice) * 100).round()
             : 0;
+
     final imageUrl =
         (productData['imageUrls'] as List?)?.first ??
         "https://via.placeholder.com/150";
@@ -60,7 +64,7 @@ class ProductCard extends StatelessWidget {
                   right: 8,
                   child: CircleAvatar(
                     radius: 16,
-                    backgroundColor: Colors.white.withOpacity(0.8),
+                    backgroundColor: Colors.white.withAlpha(204),
                     child: const Icon(
                       Icons.favorite_border,
                       size: 18,
@@ -77,7 +81,7 @@ class ProductCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withValues(alpha: 153),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -105,10 +109,7 @@ class ProductCard extends StatelessWidget {
                 name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  // fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(fontSize: 12),
               ),
             ),
 
@@ -147,6 +148,8 @@ class ProductCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // Old price if available
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
