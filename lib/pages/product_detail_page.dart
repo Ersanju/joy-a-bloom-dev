@@ -1189,7 +1189,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               children: [
                 Row(
                   children: [
-                    ReviewUserInfo(userId: review.userId),
+                    ReviewUserInfo(review: review),
                     const SizedBox(width: 8),
                     Text(
                       "${review.createdAt.day}/${review.createdAt.month}/${review.createdAt.year}",
@@ -1392,77 +1392,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 }
 
-class ReviewUserInfo extends StatefulWidget {
-  final String userId;
-
-  const ReviewUserInfo({super.key, required this.userId});
-
-  @override
-  State<ReviewUserInfo> createState() => _ReviewUserInfoState();
-}
-
-class _ReviewUserInfoState extends State<ReviewUserInfo> {
-  late Future<DocumentSnapshot> _userFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _userFuture =
-        FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
-  }
+class ReviewUserInfo extends StatelessWidget {
+  final Review review;
+  const ReviewUserInfo({Key? key, required this.review}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: _userFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Row(
-            children: const [
-              CircleAvatar(radius: 12, backgroundColor: Colors.grey),
-              SizedBox(width: 8),
-              Text("Loading...", style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          );
-        }
-
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return Row(
-            children: const [
-              CircleAvatar(radius: 12, backgroundColor: Colors.grey),
-              SizedBox(width: 8),
-              Text("Anonymous", style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          );
-        }
-
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final name = data['userName'] ?? 'User';
-        final profilePhoto = data['profileImageUrl'];
-
-        return Row(
-          children: [
-            profilePhoto != null && profilePhoto.toString().isNotEmpty
-                ? CircleAvatar(
-                  radius: 12,
-                  backgroundImage: NetworkImage(profilePhoto),
-                )
-                : CircleAvatar(
-                  radius: 12,
-                  backgroundColor: Colors.grey.shade300,
-                  child: Text(
-                    name[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            const SizedBox(width: 8),
-            Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        const CircleAvatar(
+          backgroundColor: Colors.green,
+          radius: 14,
+          child: Icon(Icons.person, color: Colors.white, size: 14),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          review.userName,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ],
     );
   }
 }
