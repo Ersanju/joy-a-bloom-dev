@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:joy_a_bloom_dev/home_page.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/reminder_list_page.dart';
-import 'package:joy_a_bloom_dev/pages/account_page/reminder_page.dart';
+import '../authentication/login_page.dart';
 import 'edit_profile_page.dart';
 
 class AccountPage extends StatefulWidget {
@@ -16,23 +19,92 @@ class AccountPage extends StatefulWidget {
 class _AccountPageState extends State<AccountPage> {
   File? _localImage;
   String? _firestoreImageUrl;
-  String userId = 'ersanjay';
+  User? _currentUser;
 
   String _name = 'Loading...';
   String _email = '';
-  ImageProvider<Object>? get imageProvider {
-    if (_localImage != null) {
-      return FileImage(_localImage!);
-    } else if (_firestoreImageUrl != null && _firestoreImageUrl!.isNotEmpty) {
-      return NetworkImage(_firestoreImageUrl!);
-    }
-    return null;
-  }
 
   @override
   void initState() {
     super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
     _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    if (_currentUser == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_currentUser!.uid)
+            .get();
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        _name = data['name'] ?? '';
+        _email = data['email'] ?? '';
+        _firestoreImageUrl = data['profileImageUrl'];
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    if (_currentUser == null) return;
+
+    try {
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+      );
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      setState(() {
+        _localImage = file;
+      });
+
+      // Show uploading progress
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Uploading image...")));
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance.ref().child(
+        'user_profiles/${_currentUser!.uid}.jpg',
+      );
+
+      await storageRef.putFile(file);
+
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // Save download URL to Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .update({'profileImageUrl': downloadUrl});
+
+      setState(() {
+        _firestoreImageUrl = downloadUrl;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile picture updated!")));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to upload image: $e")));
+    }
+  }
+
+  ImageProvider<Object>? get imageProvider {
+    if (_localImage != null) {
+      return FileImage(_localImage!);
+    } else if (_firestoreImageUrl?.isNotEmpty == true) {
+      return NetworkImage(_firestoreImageUrl!);
+    }
+    return null;
   }
 
   @override
@@ -49,7 +121,7 @@ class _AccountPageState extends State<AccountPage> {
         child: Column(
           children: [
             _buildProfileTile(),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _buildAccountOptions(context),
             const Divider(height: 30, thickness: 5),
             _buildAccountTileSection(context),
@@ -59,47 +131,39 @@ class _AccountPageState extends State<AccountPage> {
             const SizedBox(height: 15),
             _buildFooterSection(context),
             const SizedBox(height: 15),
-            _buildLogoutButton(context),
+            _buildAuthButton(context),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _loadUserData() async {
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    if (doc.exists) {
-      final data = doc.data()!;
-      setState(() {
-        _name = data['name'] ?? '';
-        _email = data['email'] ?? '';
-        _firestoreImageUrl = data['profileImageUrl'];
-      });
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _localImage = File(pickedFile.path);
-      });
-    }
-  }
-
   Widget _buildProfileTile() {
+    _currentUser =
+        FirebaseAuth.instance.currentUser; // 👈 Always get the latest user
+
+    if (_currentUser == null) {
+      return ListTile(
+        leading: const CircleAvatar(radius: 30, child: Icon(Icons.person)),
+        title: const Text("Guest"),
+        subtitle: const Text("Please login to see your profile"),
+      );
+    }
+
     return ListTile(
       leading: GestureDetector(
         onTap: _pickImage,
         child: CircleAvatar(
           radius: 30,
           backgroundColor: Colors.grey.shade300,
-          backgroundImage: imageProvider,
+          backgroundImage:
+              _firestoreImageUrl != null && _firestoreImageUrl!.isNotEmpty
+                  ? NetworkImage(_firestoreImageUrl!)
+                  : (_localImage != null ? FileImage(_localImage!) : null)
+                      as ImageProvider?,
           child:
-              imageProvider == null
+              (_firestoreImageUrl == null || _firestoreImageUrl!.isEmpty) &&
+                      _localImage == null
                   ? const Icon(
                     Icons.account_circle,
                     size: 48,
@@ -117,69 +181,50 @@ class _AccountPageState extends State<AccountPage> {
             context,
             MaterialPageRoute(builder: (_) => const EditProfilePage()),
           );
-          _loadUserData(); // reload profile after return
+          _loadUserData(); // Refresh after edit
         },
       ),
     );
   }
 
   Widget _buildAccountOptions(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 2.8,
-            children: [
-              _AccountButton(
-                icon: Icons.local_shipping_outlined,
-                label: "My Orders",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => Text('data')),
-                  );
-                },
-              ),
-              _AccountButton(
-                icon: Icons.notifications_outlined,
-                label: "Reminders",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ReminderListPage()),
-                  );
-                },
-              ),
-              _AccountButton(
-                icon: Icons.chat_bubble_outline,
-                label: "Chat With Us",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => Text('data')),
-                  );
-                },
-              ),
-              _AccountButton(
-                icon: Icons.favorite_border,
-                label: "Wishlist",
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => Text('data')),
-                  );
-                },
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 2.8,
+        children: [
+          _AccountButton(
+            icon: Icons.local_shipping_outlined,
+            label: "My Orders",
+            onPressed: () {},
           ),
-        ),
-      ],
+          _AccountButton(
+            icon: Icons.notifications_outlined,
+            label: "Reminders",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReminderListPage()),
+              );
+            },
+          ),
+          _AccountButton(
+            icon: Icons.chat_bubble_outline,
+            label: "Chat With Us",
+            onPressed: () {},
+          ),
+          _AccountButton(
+            icon: Icons.favorite_border,
+            label: "Wishlist",
+            onPressed: () {},
+          ),
+        ],
+      ),
     );
   }
 
@@ -192,53 +237,29 @@ class _AccountPageState extends State<AccountPage> {
           trailing: "New",
         ),
         _buildDivider(),
-
         _AccountTile(
           icon: Icons.person_outline,
           label: "Personal Information",
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+              MaterialPageRoute(builder: (_) => const EditProfilePage()),
             );
           },
         ),
         _buildDivider(),
-
         _AccountTile(
           icon: Icons.location_on_outlined,
           label: "Saved Addresses",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Text('data')),
-            );
-          },
+          onTap: () {},
         ),
         _buildDivider(),
-
-        _AccountTile(
-          icon: Icons.help_outline,
-          label: "FAQ's",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Text('data')),
-            );
-          },
-        ),
+        _AccountTile(icon: Icons.help_outline, label: "FAQ's", onTap: () {}),
         _buildDivider(),
         const _AccountTile(icon: Icons.delete_outline, label: "Delete Account"),
       ],
     );
   }
-
-  Widget _buildDivider() => Divider(
-    thickness: 0.5,
-    indent: 16,
-    endIndent: 16,
-    color: Colors.grey.shade300,
-  );
 
   Widget _buildEnquiriesSection(BuildContext context) {
     return Column(
@@ -246,56 +267,30 @@ class _AccountPageState extends State<AccountPage> {
       children: [
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "Enquiries",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+          child: Text(
+            "Enquiries",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 10),
-
         _AccountTile(
           icon: Icons.celebration_outlined,
           label: "Birthday/ Wedding Decor",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Text('data')),
-            );
-          },
+          onTap: () {},
         ),
         _buildDivider(),
-
         _AccountTile(
           icon: Icons.work_outline,
           label: "Corporate Gifts/ Bulk Orders",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) =>
-                        const Text('data'), // Replace if different page
-              ),
-            );
-          },
+          onTap: () {},
         ),
         _buildDivider(),
-
         _AccountTile(
           icon: Icons.home_rounded,
           label: "Become a Partner",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Text('data')),
-            );
-          },
+          onTap: () {},
         ),
         _buildDivider(),
-
         _AccountTile(
           icon: Icons.feedback,
           label: 'Share app feedback',
@@ -310,7 +305,7 @@ class _AccountPageState extends State<AccountPage> {
               builder:
                   (_) => const FractionallySizedBox(
                     heightFactor: 0.5,
-                    child: Text('data'),
+                    child: Text('Feedback Form Placeholder'),
                   ),
             );
           },
@@ -323,12 +318,7 @@ class _AccountPageState extends State<AccountPage> {
     return Column(
       children: [
         TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Text('data')),
-            );
-          },
+          onPressed: () {},
           child: const Text(
             "Privacy Policy",
             style: TextStyle(
@@ -338,43 +328,67 @@ class _AccountPageState extends State<AccountPage> {
           ),
         ),
         const Text('App Version: 5.1.1', style: TextStyle(color: Colors.grey)),
-        const SizedBox(height: 20),
       ],
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context) {
+  Widget _buildDivider() => Divider(
+    thickness: 0.5,
+    indent: 16,
+    endIndent: 16,
+    color: Colors.grey.shade300,
+  );
+
+  Widget _buildAuthButton(BuildContext context) {
+    final isLoggedIn = _currentUser != null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ElevatedButton.icon(
-        onPressed: () {
-          // Logout confirmation dialog
-          showDialog(
-            context: context,
-            builder:
-                (context) => AlertDialog(
-                  title: const Text("Logout"),
-                  content: const Text("Are you sure you want to logout?"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel"),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // TODO: Add your logout logic here (e.g. FirebaseAuth.instance.signOut())
-                      },
-                      child: const Text("Logout"),
-                    ),
-                  ],
-                ),
-          );
+        onPressed: () async {
+          if (isLoggedIn) {
+            // Logout confirmation
+            showDialog(
+              context: context,
+              builder:
+                  (_) => AlertDialog(
+                    title: const Text("Logout"),
+                    content: const Text("Are you sure you want to logout?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await FirebaseAuth.instance.signOut();
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const HomePage()),
+                            (route) => false,
+                          );
+                        },
+                        child: const Text("Logout"),
+                      ),
+                    ],
+                  ),
+            );
+          } else {
+            // Navigate to Login
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+          }
         },
-        icon: const Icon(Icons.logout, color: Colors.white),
-        label: const Text("Logout"),
+        icon: Icon(
+          isLoggedIn ? Icons.logout : Icons.login,
+          color: Colors.white,
+        ),
+        label: Text(isLoggedIn ? "Logout" : "Login"),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF7043), // Deep Orange
+          backgroundColor: isLoggedIn ? const Color(0xFFFF7043) : Colors.green,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(

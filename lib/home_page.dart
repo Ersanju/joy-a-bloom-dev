@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/account_page.dart';
-import 'package:joy_a_bloom_dev/pages/authentication/signup_login_page.dart';
+import 'package:joy_a_bloom_dev/pages/authentication/login_page.dart';
 import 'package:joy_a_bloom_dev/pages/category/category_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
@@ -48,6 +49,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _checkLoginStatus();
     _loadAllHomeData();
     _fetchLocation();
     _fetchBannerImages();
@@ -132,31 +134,46 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const SignupLoginPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => LoginPage()),
                 );
               },
-              child: const Text(
-                "Login / Signup",
-                style: TextStyle(color: Colors.black),
-              ),
+              child: const Text("Login / Signup"),
             )
             : Row(
               children: [
-                if (_userData!['profileImageUrl'] != null)
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundImage: NetworkImage(
-                      _userData!['profileImageUrl'],
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                Text(
-                  _userData!['name'] ?? "User",
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundImage:
+                            _userData!['profileImageUrl'] != null &&
+                                    _userData!['profileImageUrl']
+                                        .toString()
+                                        .isNotEmpty
+                                ? NetworkImage(_userData!['profileImageUrl'])
+                                : null,
+                        backgroundColor: Colors.grey[300],
+                        child:
+                            _userData!['profileImageUrl'] == null ||
+                                    _userData!['profileImageUrl']
+                                        .toString()
+                                        .isEmpty
+                                ? const Icon(Icons.person, size: 16)
+                                : null,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _userData!['name']?.split(' ').first ?? "User",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -351,12 +368,38 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> fetchUserData() async {
-    try {
+  void _checkLoginStatus() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      // User is logged in
       DocumentSnapshot userSnapshot =
           await FirebaseFirestore.instance
               .collection('users')
-              .doc('ersanjay')
+              .doc(currentUser.uid)
+              .get();
+
+      if (userSnapshot.exists) {
+        setState(() {
+          _userData = userSnapshot.data() as Map<String, dynamic>;
+        });
+      }
+    } else {
+      // User is not logged in
+      setState(() {
+        _userData = null;
+      });
+    }
+  }
+
+  Future<void> fetchUserData() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      DocumentSnapshot userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
               .get();
 
       if (userSnapshot.exists) {

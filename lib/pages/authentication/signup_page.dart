@@ -1,25 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:joy_a_bloom_dev/pages/authentication/otp_page.dart';
 
-import 'opt_verification_page.dart';
+class SignupPage extends StatefulWidget {
+  final String prefilledEmail;
+  const SignupPage({required this.prefilledEmail});
 
-class SignupUser extends StatefulWidget {
   @override
-  _SignupUserState createState() => _SignupUserState();
+  _SignupPageState createState() => _SignupPageState();
 }
 
-class _SignupUserState extends State<SignupUser> {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
+class _SignupPageState extends State<SignupPage> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   String countryCode = '+91';
 
   Future<Map<String, String>> fetchAssets() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('app_assets')
-        .doc('login_assets')
-        .get();
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('app_assets')
+            .doc('login_assets')
+            .get();
 
     final data = doc.data() ?? {};
     return {
@@ -27,6 +30,34 @@ class _SignupUserState extends State<SignupUser> {
       'logoUrl': data['logoUrl'] ?? '',
       'googleLogoUrl': data['googleLogoUrl'] ?? '',
     };
+  }
+
+  void _continueToOtp() {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    if (name.isEmpty || phone.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Enter a valid name and 10-digit phone number"),
+        ),
+      );
+      return;
+    }
+
+    final fullPhone = '+91$phone'; // Fixed country code
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => OtpPage(
+              phone: fullPhone, // send complete number
+              email: widget.prefilledEmail,
+              name: name,
+            ),
+      ),
+    );
   }
 
   @override
@@ -94,7 +125,7 @@ class _SignupUserState extends State<SignupUser> {
                   child: Column(
                     children: [
                       TextField(
-                        controller: nameController,
+                        controller: _nameController,
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.person_outline),
                           labelText: 'Name',
@@ -105,8 +136,10 @@ class _SignupUserState extends State<SignupUser> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
+                        enabled: false,
+                        controller: TextEditingController(
+                          text: widget.prefilledEmail,
+                        ),
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.email_outlined),
                           labelText: 'Email',
@@ -119,20 +152,25 @@ class _SignupUserState extends State<SignupUser> {
                       Row(
                         children: [
                           CountryCodePicker(
-                            onChanged: (code) =>
-                            countryCode = code.dialCode ?? '+91',
+                            onChanged: (code) {
+                              countryCode = code.dialCode ?? '+91';
+                            },
                             initialSelection: 'IN',
                             favorite: ['+91', 'IN'],
+                            showDropDownButton: false,
+                            enabled: false, // disables interaction
                           ),
                           Expanded(
                             child: TextField(
-                              controller: phoneController,
-                              keyboardType: TextInputType.phone,
+                              controller: _phoneController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
                               decoration: InputDecoration(
-                                hintText: 'Enter mobile number',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                hintText: 'Enter 10-digit phone number',
+                                border: OutlineInputBorder(),
                               ),
                             ),
                           ),
@@ -149,14 +187,7 @@ class _SignupUserState extends State<SignupUser> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OtpVerificationPage(),
-                              ),
-                            );
-                          },
+                          onPressed: _continueToOtp,
                           child: const Text(
                             "Sign Up",
                             style: TextStyle(fontSize: 16),
@@ -173,8 +204,9 @@ class _SignupUserState extends State<SignupUser> {
                           icon: Image.network(
                             googleLogoUrl,
                             height: 24,
-                            errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.error),
+                            errorBuilder:
+                                (context, error, stackTrace) =>
+                                    const Icon(Icons.error),
                           ),
                           label: const Text("Login with Google"),
                           onPressed: () {

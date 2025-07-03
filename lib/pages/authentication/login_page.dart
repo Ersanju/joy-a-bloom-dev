@@ -1,15 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:joy_a_bloom_dev/pages/authentication/signup_user.dart';
+import 'package:joy_a_bloom_dev/pages/authentication/signup_page.dart';
 
-class SignupLoginPage extends StatefulWidget {
-  const SignupLoginPage({super.key});
+import 'otp_page.dart';
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<SignupLoginPage> createState() => _SignupLoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _SignupLoginPageState extends State<SignupLoginPage> {
+class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
 
   Future<Map<String, String>> fetchLoginAssets() async {
@@ -31,6 +33,38 @@ class _SignupLoginPageState extends State<SignupLoginPage> {
           data?['googleLogoUrl'] ??
           'https://via.placeholder.com/100x100.png?text=Logo',
     };
+  }
+
+  Future<void> _handleContinue() async {
+    final email = _emailController.text.trim();
+    if (!email.contains('@')) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter valid email")));
+      return;
+    }
+
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final user = snapshot.docs.first.data();
+      final phone = user['phone'];
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => OtpPage(phone: phone, email: email)),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SignupPage(prefilledEmail: email)),
+      );
+    }
   }
 
   @override
@@ -90,7 +124,7 @@ class _SignupLoginPageState extends State<SignupLoginPage> {
                   const SizedBox(height: 60),
 
                   const Text(
-                    "Sign Up / Login to Joy-a-More!",
+                    "Sign Up / Login to Joy-a-Bloom!",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
@@ -127,23 +161,7 @@ class _SignupLoginPageState extends State<SignupLoginPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF88803D),
                         ),
-                        onPressed: () {
-                          final email = _emailController.text.trim();
-                          if (email.isEmpty || !email.contains('@')) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Please enter a valid email"),
-                              ),
-                            );
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SignupUser(),
-                            ),
-                          );
-                        },
+                        onPressed: _handleContinue,
                         child: const Text("Continue"),
                       ),
                     ),

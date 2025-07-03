@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -37,7 +38,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController(); // read-only
   final _phoneController = TextEditingController();
-  final String userId = 'ersanjay';
+  late final String userId;
 
   File? _profileImage;
   String? _firestoreImageUrl;
@@ -57,6 +58,13 @@ class _EditProfileFormState extends State<EditProfileForm> {
   void initState() {
     super.initState();
     _loadUserData();
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      userId = currentUser.uid;
+      _loadUserData();
+    } else {
+      // Optional: redirect to login or show error
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -67,7 +75,8 @@ class _EditProfileFormState extends State<EditProfileForm> {
       setState(() {
         _nameController.text = data['name'] ?? '';
         _emailController.text = data['email'] ?? '';
-        _phoneController.text = data['phone'] ?? '';
+        final fullPhone = data['phone'] ?? '';
+        _phoneController.text = fullPhone.replaceFirst(RegExp(r'^\+91'), '');
         _gender = data['gender'] ?? 'Male';
         _firestoreImageUrl = data['profileImageUrl'];
         _dob = data['dob'] != null ? DateTime.tryParse(data['dob']) : null;
@@ -204,6 +213,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
           const SizedBox(height: 16),
 
           TextFormField(
+            enabled: false,
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             validator: (val) {
