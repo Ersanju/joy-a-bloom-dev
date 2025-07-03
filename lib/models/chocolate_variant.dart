@@ -2,7 +2,6 @@ class ChocolateVariant {
   final String sku;
   final double weightInGrams;
   final int quantity;
-  final bool isSugarFree;
   final double price;
   final double? oldPrice;
   final int stockQuantity;
@@ -12,7 +11,6 @@ class ChocolateVariant {
     required this.sku,
     required this.weightInGrams,
     required this.quantity,
-    required this.isSugarFree,
     required this.price,
     this.oldPrice,
     required this.stockQuantity,
@@ -24,7 +22,6 @@ class ChocolateVariant {
         sku: json['sku'],
         weightInGrams: (json['weightInGrams'] as num).toDouble(),
         quantity: json['quantity'],
-        isSugarFree: json['isSugarFree'],
         price: (json['price'] as num).toDouble(),
         oldPrice:
         json['oldPrice'] != null ? (json['oldPrice'] as num).toDouble() : null,
@@ -36,7 +33,6 @@ class ChocolateVariant {
     'sku': sku,
     'weightInGrams': weightInGrams,
     'quantity': quantity,
-    'isSugarFree': isSugarFree,
     'price': price,
     if (oldPrice != null) 'oldPrice': oldPrice,
     'stockQuantity': stockQuantity,

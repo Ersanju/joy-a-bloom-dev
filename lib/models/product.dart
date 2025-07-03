@@ -67,9 +67,13 @@ class Product {
             ?.map((e) => Review.fromJson(e))
             .toList() ??
         [],
-    createdAt: DateTime.parse(json['createdAt']),
-    updatedAt: DateTime.parse(json['updatedAt']),
-    createdBy: json['createdBy'],
+    createdAt: json['createdAt'] != null
+        ? DateTime.parse(json['createdAt'])
+        : DateTime.now(), // or throw/fallback
+    updatedAt: json['updatedAt'] != null
+        ? DateTime.parse(json['updatedAt'])
+        : DateTime.now(),
+    createdBy: json['createdBy'] ?? 'system', // fallback or required validation
   );
 
   Map<String, dynamic> toJson() => {
