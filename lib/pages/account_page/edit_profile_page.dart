@@ -1,8 +1,12 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../utils/app_util.dart';
 
 class EditProfilePage extends StatelessWidget {
   const EditProfilePage({super.key});
@@ -39,6 +43,8 @@ class _EditProfileFormState extends State<EditProfileForm> {
   final _emailController = TextEditingController(); // read-only
   final _phoneController = TextEditingController();
   late final String userId;
+  late final User _currentUser; // ✅ For Firebase Auth
+  File? _localImage; // ✅ For storing compressed image locally
 
   File? _profileImage;
   String? _firestoreImageUrl;
@@ -57,13 +63,11 @@ class _EditProfileFormState extends State<EditProfileForm> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      userId = currentUser.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _currentUser = user;
+      userId = user.uid;
       _loadUserData();
-    } else {
-      // Optional: redirect to login or show error
     }
   }
 
@@ -101,9 +105,15 @@ class _EditProfileFormState extends State<EditProfileForm> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() => _profileImage = File(picked.path));
+    final url = await AppUtil.pickAndUploadProfileImage(
+      context: context,
+      user: _currentUser,
+    );
+
+    if (url != null) {
+      setState(() {
+        _firestoreImageUrl = url;
+      });
     }
   }
 
@@ -112,11 +122,9 @@ class _EditProfileFormState extends State<EditProfileForm> {
 
     final updatedData = {
       'name': _nameController.text.trim(),
-      'phone': _phoneController.text.trim(),
       'gender': _gender,
       'dob': _dob?.toIso8601String(),
       'anniversary': _anniversary?.toIso8601String(),
-      'lastLoginAt': DateTime.now().toIso8601String(),
     };
 
     await FirebaseFirestore.instance

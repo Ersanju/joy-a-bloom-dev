@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joy_a_bloom_dev/home_page.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/reminder_list_page.dart';
+import '../../utils/app_util.dart';
 import '../authentication/login_page.dart';
 import 'edit_profile_page.dart';
 
@@ -53,48 +54,15 @@ class _AccountPageState extends State<AccountPage> {
   Future<void> _pickImage() async {
     if (_currentUser == null) return;
 
-    try {
-      final pickedFile = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-      );
-      if (pickedFile == null) return;
+    final url = await AppUtil.pickAndUploadProfileImage(
+      context: context,
+      user: _currentUser!,
+    );
 
-      final file = File(pickedFile.path);
+    if (url != null) {
       setState(() {
-        _localImage = file;
+        _firestoreImageUrl = url;
       });
-
-      // Show uploading progress
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Uploading image...")));
-
-      // Upload to Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child(
-        'user_profiles/${_currentUser!.uid}.jpg',
-      );
-
-      await storageRef.putFile(file);
-
-      final downloadUrl = await storageRef.getDownloadURL();
-
-      // Save download URL to Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUser!.uid)
-          .update({'profileImageUrl': downloadUrl});
-
-      setState(() {
-        _firestoreImageUrl = downloadUrl;
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Profile picture updated!")));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to upload image: $e")));
     }
   }
 
