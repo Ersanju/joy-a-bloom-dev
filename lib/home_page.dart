@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/account_page.dart';
+import 'package:joy_a_bloom_dev/pages/authentication/app_auth_provider.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/login_page.dart';
 import 'package:joy_a_bloom_dev/pages/category/category_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
@@ -15,6 +15,7 @@ import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
 import 'package:joy_a_bloom_dev/widgets/chocolate_product_card.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
+import 'package:provider/provider.dart';
 import 'models/category.dart';
 import 'models/product.dart';
 import 'pages/home/delivery_location_page.dart';
@@ -39,7 +40,6 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> appReviews = [];
   String _locationText = 'Fetching location...';
   String _pinCode = '';
-  Map<String, dynamic>? _userData;
 
   bool isLoadingBanners = true;
   Timer? _timer;
@@ -49,7 +49,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
     _loadAllHomeData();
     _fetchLocation();
     _fetchBannerImages();
@@ -76,6 +75,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   PreferredSizeWidget buildAppBar() {
+    final auth = context.watch<AppAuthProvider>();
+    final user = auth.user;
+    final userData = auth.userData;
+    final isLoggedIn = user != null;
+
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: Colors.white,
@@ -129,56 +133,57 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       actions: [
-        _userData == null
-            ? TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                );
-              },
-              child: const Text("Login / Signup"),
-            )
-            : Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundImage:
-                            _userData!['profileImageUrl'] != null &&
-                                    _userData!['profileImageUrl']
-                                        .toString()
-                                        .isNotEmpty
-                                ? NetworkImage(_userData!['profileImageUrl'])
-                                : null,
-                        backgroundColor: Colors.grey[300],
-                        child:
-                            _userData!['profileImageUrl'] == null ||
-                                    _userData!['profileImageUrl']
-                                        .toString()
-                                        .isEmpty
-                                ? const Icon(Icons.person, size: 16)
-                                : null,
+        if (!isLoggedIn)
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+              );
+            },
+            child: const Text("Login / Signup"),
+          )
+        else
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundImage:
+                          userData?['profileImageUrl'] != null &&
+                                  userData!['profileImageUrl']
+                                      .toString()
+                                      .isNotEmpty
+                              ? NetworkImage(userData['profileImageUrl'])
+                              : null,
+                      backgroundColor: Colors.grey[300],
+                      child:
+                          userData?['profileImageUrl'] == null ||
+                                  userData!['profileImageUrl']
+                                      .toString()
+                                      .isEmpty
+                              ? const Icon(Icons.person, size: 16)
+                              : null,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      userData?['name']?.split(' ').first ?? "User",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _userData!['name']?.split(' ').first ?? "User",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+            ],
+          ),
       ],
     );
   }
@@ -365,50 +370,6 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       debugPrint("Error loading homepage data: $e");
       setState(() => isHomeLoading = false); // fallback: show partial UI
-    }
-  }
-
-  void _checkLoginStatus() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      // User is logged in
-      DocumentSnapshot userSnapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .get();
-
-      if (userSnapshot.exists) {
-        setState(() {
-          _userData = userSnapshot.data() as Map<String, dynamic>;
-        });
-      }
-    } else {
-      // User is not logged in
-      setState(() {
-        _userData = null;
-      });
-    }
-  }
-
-  Future<void> fetchUserData() async {
-    try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
-
-      DocumentSnapshot userSnapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .get();
-
-      if (userSnapshot.exists) {
-        setState(() {
-          _userData = userSnapshot.data() as Map<String, dynamic>;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching user data: $e");
     }
   }
 

@@ -1,14 +1,15 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:joy_a_bloom_dev/home_page.dart';
-import 'package:joy_a_bloom_dev/pages/account_page/reminder_list_page.dart';
+
 import '../../utils/app_util.dart';
 import '../authentication/login_page.dart';
-import 'edit_profile_page.dart';
+import '../authentication/app_auth_provider.dart';
+import '../account_page/edit_profile_page.dart';
+import '../account_page/reminder_list_page.dart';
+import '../../home_page.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -20,27 +21,24 @@ class AccountPage extends StatefulWidget {
 class _AccountPageState extends State<AccountPage> {
   File? _localImage;
   String? _firestoreImageUrl;
-  User? _currentUser;
-
   String _name = 'Loading...';
   String _email = '';
 
   @override
   void initState() {
     super.initState();
-    _currentUser = FirebaseAuth.instance.currentUser;
-    _loadUserData();
+    _loadUserData(); // Load on first build
   }
 
   Future<void> _loadUserData() async {
-    if (_currentUser == null) return;
+    final user = context.read<AppAuthProvider>().user;
+    if (user == null) return;
 
     final doc =
         await FirebaseFirestore.instance
             .collection('users')
-            .doc(_currentUser!.uid)
+            .doc(user.uid)
             .get();
-
     if (doc.exists) {
       final data = doc.data()!;
       setState(() {
@@ -52,11 +50,12 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _pickImage() async {
-    if (_currentUser == null) return;
+    final user = context.read<AppAuthProvider>().user;
+    if (user == null) return;
 
     final url = await AppUtil.pickAndUploadProfileImage(
       context: context,
-      user: _currentUser!,
+      user: user,
     );
 
     if (url != null) {
@@ -66,17 +65,11 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  ImageProvider<Object>? get imageProvider {
-    if (_localImage != null) {
-      return FileImage(_localImage!);
-    } else if (_firestoreImageUrl?.isNotEmpty == true) {
-      return NetworkImage(_firestoreImageUrl!);
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AppAuthProvider>();
+    final isLoggedIn = auth.isLoggedIn;
+
     return Scaffold(
       backgroundColor: const Color(0xfffafaf6),
       appBar: AppBar(
@@ -88,7 +81,7 @@ class _AccountPageState extends State<AccountPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileTile(),
+            _buildProfileTile(auth),
             const SizedBox(height: 20),
             _buildAccountOptions(context),
             const Divider(height: 30, thickness: 5),
@@ -97,25 +90,33 @@ class _AccountPageState extends State<AccountPage> {
             _buildEnquiriesSection(context),
             const Divider(height: 30, thickness: 5),
             const SizedBox(height: 15),
-            _buildFooterSection(context),
+            _buildFooterSection(),
             const SizedBox(height: 15),
-            _buildAuthButton(context),
+            _buildAuthButton(context, isLoggedIn),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileTile() {
-    _currentUser =
-        FirebaseAuth.instance.currentUser; // 👈 Always get the latest user
+  Widget _buildProfileTile(AppAuthProvider auth) {
+    final user = auth.user;
 
-    if (_currentUser == null) {
+    if (user == null) {
       return ListTile(
         leading: const CircleAvatar(radius: 30, child: Icon(Icons.person)),
         title: const Text("Guest"),
         subtitle: const Text("Please login to see your profile"),
       );
+    }
+
+    ImageProvider<Object>? imageProvider;
+    if (_firestoreImageUrl?.isNotEmpty == true) {
+      imageProvider = NetworkImage(_firestoreImageUrl!);
+    } else if (_localImage != null) {
+      imageProvider = FileImage(_localImage!);
+    } else {
+      imageProvider = null; // Will use fallback icon
     }
 
     return ListTile(
@@ -124,14 +125,9 @@ class _AccountPageState extends State<AccountPage> {
         child: CircleAvatar(
           radius: 30,
           backgroundColor: Colors.grey.shade300,
-          backgroundImage:
-              _firestoreImageUrl != null && _firestoreImageUrl!.isNotEmpty
-                  ? NetworkImage(_firestoreImageUrl!)
-                  : (_localImage != null ? FileImage(_localImage!) : null)
-                      as ImageProvider?,
+          backgroundImage: imageProvider,
           child:
-              (_firestoreImageUrl == null || _firestoreImageUrl!.isEmpty) &&
-                      _localImage == null
+              imageProvider == null
                   ? const Icon(
                     Icons.account_circle,
                     size: 48,
@@ -149,7 +145,7 @@ class _AccountPageState extends State<AccountPage> {
             context,
             MaterialPageRoute(builder: (_) => const EditProfilePage()),
           );
-          _loadUserData(); // Refresh after edit
+          _loadUserData(); // Refresh after editing
         },
       ),
     );
@@ -273,7 +269,7 @@ class _AccountPageState extends State<AccountPage> {
               builder:
                   (_) => const FractionallySizedBox(
                     heightFactor: 0.5,
-                    child: Text('Feedback Form Placeholder'),
+                    child: Center(child: Text('Feedback Form Placeholder')),
                   ),
             );
           },
@@ -282,7 +278,7 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  Widget _buildFooterSection(BuildContext context) {
+  Widget _buildFooterSection() {
     return Column(
       children: [
         TextButton(
@@ -307,16 +303,13 @@ class _AccountPageState extends State<AccountPage> {
     color: Colors.grey.shade300,
   );
 
-  Widget _buildAuthButton(BuildContext context) {
-    final isLoggedIn = _currentUser != null;
-
+  Widget _buildAuthButton(BuildContext context, bool isLoggedIn) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ElevatedButton.icon(
         onPressed: () async {
           if (isLoggedIn) {
-            // Logout confirmation
-            showDialog(
+            final confirm = await showDialog<bool>(
               context: context,
               builder:
                   (_) => AlertDialog(
@@ -324,26 +317,26 @@ class _AccountPageState extends State<AccountPage> {
                     content: const Text("Are you sure you want to logout?"),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(context, false),
                         child: const Text("Cancel"),
                       ),
                       TextButton(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          await FirebaseAuth.instance.signOut();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => const HomePage()),
-                            (route) => false,
-                          );
-                        },
+                        onPressed: () => Navigator.pop(context, true),
                         child: const Text("Logout"),
                       ),
                     ],
                   ),
             );
+            if (confirm == true) {
+              await FirebaseAuth.instance.signOut();
+              if (!mounted) return;
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const HomePage()),
+                (route) => false,
+              );
+            }
           } else {
-            // Navigate to Login
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const LoginPage()),

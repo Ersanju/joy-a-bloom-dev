@@ -4,7 +4,7 @@ import 'cart_item.dart';
 import 'order_model.dart';
 
 class User {
-  final String id;
+  final String uid;
   final String name;
   final String email;
   final String phone;
@@ -20,7 +20,7 @@ class User {
   final String? fcmToken;
 
   User({
-    required this.id,
+    required this.uid,
     required this.name,
     required this.email,
     required this.phone,
@@ -38,7 +38,7 @@ class User {
 
   factory User.fromMap(Map<String, dynamic> map, String uid) {
     return User(
-      id: uid,
+      uid: uid,
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
