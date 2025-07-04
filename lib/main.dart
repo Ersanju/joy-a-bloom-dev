@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/app_auth_provider.dart';
+import 'package:joy_a_bloom_dev/utils/wishlist_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'home_page.dart';
@@ -10,8 +11,11 @@ void main() async {
   await Firebase.initializeApp();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppAuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppAuthProvider()),
+        ChangeNotifierProvider(create: (_) => WishlistProvider()),
+      ],
       child: const MyApp(),
     ),
   );

@@ -13,6 +13,7 @@ import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
+import 'package:joy_a_bloom_dev/utils/wishlist_provider.dart';
 import 'package:joy_a_bloom_dev/widgets/chocolate_product_card.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
 import 'package:provider/provider.dart';
@@ -205,9 +206,9 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
           chocolateBarSection(chocolates),
           SizedBox(height: 10),
-          newArrivalsSection(),
+          newArrivalsSection(context),
           SizedBox(height: 10),
-          youMayAlsoLikeSection(),
+          youMayAlsoLikeSection(context),
           SizedBox(height: 10),
           appReviewsSection(),
           SizedBox(height: 10),
@@ -982,6 +983,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget featuredOffersSection(BuildContext context) {
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1000,8 +1003,13 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.only(left: 16),
             itemBuilder: (context, index) {
               final productData = featuredProducts[index];
+              final productId = productData['id'];
+
               return ProductCard(
                 productData: productData,
+                isWishlisted: wishlistProvider.isWishlisted(productId),
+                onWishlistToggle:
+                    () => wishlistProvider.toggleWishlist(productId),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1019,8 +1027,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget newArrivalsSection() {
-    if (newArrivals.isEmpty) return const SizedBox(); // Or show placeholder
+  Widget newArrivalsSection(BuildContext context) {
+    if (newArrivals.isEmpty) return const SizedBox();
+
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,9 +1050,13 @@ class _HomePageState extends State<HomePage> {
             itemCount: newArrivals.length,
             itemBuilder: (context, index) {
               final productData = newArrivals[index];
+              final productId = productData['id'];
 
               return ProductCard(
                 productData: productData,
+                isWishlisted: wishlistProvider.isWishlisted(productId),
+                onWishlistToggle:
+                    () => wishlistProvider.toggleWishlist(productId),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1060,8 +1074,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget youMayAlsoLikeSection() {
+  Widget youMayAlsoLikeSection(BuildContext context) {
     if (youMayAlsoLikeProducts.isEmpty) return const SizedBox();
+
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1081,9 +1097,13 @@ class _HomePageState extends State<HomePage> {
             itemCount: youMayAlsoLikeProducts.length,
             itemBuilder: (context, index) {
               final productData = youMayAlsoLikeProducts[index];
+              final productId = productData['id'];
 
               return ProductCard(
                 productData: productData,
+                isWishlisted: wishlistProvider.isWishlisted(productId),
+                onWishlistToggle:
+                    () => wishlistProvider.toggleWishlist(productId),
                 onTap: () {
                   Navigator.push(
                     context,

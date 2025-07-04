@@ -3,28 +3,25 @@ import 'package:flutter/material.dart';
 class ProductCard extends StatelessWidget {
   final Map<String, dynamic> productData;
   final VoidCallback onTap;
+  final bool isWishlisted;
+  final VoidCallback onWishlistToggle;
 
   const ProductCard({
     super.key,
     required this.productData,
     required this.onTap,
+    required this.isWishlisted,
+    required this.onWishlistToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = (productData['imageUrls'] as List?)?.first ?? '';
+    final name = productData['name'] ?? '';
     final variant =
         productData['extraAttributes']?['cakeAttribute']?['variants']?[0];
     final price = variant?['price'] ?? 0;
     final oldPrice = variant?['oldPrice'] ?? 0;
-    final discount =
-        (oldPrice > price)
-            ? (((oldPrice - price) / oldPrice) * 100).round()
-            : 0;
-
-    final imageUrl =
-        (productData['imageUrls'] as List?)?.first ??
-        "https://via.placeholder.com/150";
-    final name = productData['name'] ?? '';
     final rating = productData['averageRating'] ?? 4.5;
 
     return GestureDetector(
@@ -35,19 +32,11 @@ class ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              spreadRadius: 1,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image with overlays
             Stack(
               children: [
                 ClipRRect(
@@ -62,13 +51,16 @@ class ProductCard extends StatelessWidget {
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.white.withAlpha(204),
-                    child: const Icon(
-                      Icons.favorite_border,
-                      size: 18,
-                      color: Colors.red,
+                  child: GestureDetector(
+                    onTap: onWishlistToggle,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        isWishlisted ? Icons.favorite : Icons.favorite_border,
+                        size: 18,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
                 ),
@@ -81,7 +73,7 @@ class ProductCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 153),
+                      color: Colors.black.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -101,10 +93,8 @@ class ProductCard extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Product name
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Text(
                 name,
                 maxLines: 2,
@@ -112,60 +102,25 @@ class ProductCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 12),
               ),
             ),
-
-            // Price and discount
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
-                children: [
-                  Text(
-                    "₹$price",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+              child: Text(
+                "₹$price",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            if (oldPrice > price)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  "₹$oldPrice",
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    decoration: TextDecoration.lineThrough,
                   ),
-                  const SizedBox(width: 6),
-                  if (discount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade100,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        "$discount% OFF",
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            ),
-
-            // Old price if available
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
-                children: [
-                  if (oldPrice > price)
-                    Text(
-                      "₹$oldPrice",
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

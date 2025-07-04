@@ -33,13 +33,28 @@ class AppAuthProvider extends ChangeNotifier {
               .collection('users')
               .doc(_user!.uid)
               .get();
-
       if (doc.exists) {
         _userData = doc.data();
         notifyListeners();
       }
     } catch (e) {
       debugPrint('Failed to fetch user data: $e');
+    }
+  }
+
+  /// Call this after login or app start to sync wishlist
+  Future<List<String>> fetchWishlistIds() async {
+    if (_user == null) return [];
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_user!.uid)
+              .get();
+      return List<String>.from(doc.data()?['wishlistProductIds'] ?? []);
+    } catch (e) {
+      debugPrint('Failed to fetch wishlist: $e');
+      return [];
     }
   }
 

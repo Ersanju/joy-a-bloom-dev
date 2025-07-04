@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/product.dart';
+import '../../utils/wishlist_provider.dart';
 import '../../widgets/product_card.dart';
 import '../product_detail_page.dart'; // Update path as needed
 
@@ -16,6 +18,7 @@ class ProductsByCategoryGridPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
     return Scaffold(
       appBar: AppBar(title: Text(categoryName)),
       body: FutureBuilder<List<Product>>(
@@ -55,6 +58,9 @@ class ProductsByCategoryGridPage extends StatelessWidget {
                       ),
                     );
                   },
+                  isWishlisted: wishlistProvider.isWishlisted(product.id),
+                  onWishlistToggle:
+                      () => wishlistProvider.toggleWishlist(product.id),
                 );
               },
             ),

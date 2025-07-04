@@ -3,8 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../models/review.dart';
+import '../utils/wishlist_provider.dart';
 import '../widgets/product_card.dart';
 import 'free_message_card_page.dart';
 
@@ -1293,59 +1295,62 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget buildSimilarProductsSection() {
-    return FutureBuilder<List<Product>>(
-      future: _similarProductsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Consumer<WishlistProvider>(
+      builder: (context, wishlistProvider, _) {
+        return FutureBuilder<List<Product>>(
+          future: _similarProductsFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Text("No similar products found");
+            }
 
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Text("No similar products found."),
-          );
-        }
+            final products = snapshot.data!;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    "You May Also Like",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  height: 190,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      final isWishlisted = wishlistProvider.isWishlisted(
+                        product.id,
+                      );
 
-        final products = snapshot.data!;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-              child: Text(
-                "You May Also Like",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            SizedBox(
-              height: 190,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: 16),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final product = products[index];
-
-                  return ProductCard(
-                    productData: product.toJson(),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) => ProductDetailPage(
-                                productData: product.toJson(),
-                              ),
-                        ),
+                      return ProductCard(
+                        productData: product.toJson(),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => ProductDetailPage(
+                                    productData: product.toJson(),
+                                  ),
+                            ),
+                          );
+                        },
+                        isWishlisted: isWishlisted,
+                        onWishlistToggle: () {
+                          wishlistProvider.toggleWishlist(product.id);
+                          // Also optionally update Firestore here if needed
+                        },
                       );
                     },
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1394,7 +1399,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
 class ReviewUserInfo extends StatelessWidget {
   final Review review;
-  const ReviewUserInfo({Key? key, required this.review}) : super(key: key);
+  const ReviewUserInfo({super.key, required this.review});
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../home_page.dart';
+import '../../utils/wishlist_provider.dart';
 
 class OtpPage extends StatefulWidget {
   final String phone;
@@ -76,18 +78,13 @@ class _OtpPageState extends State<OtpPage> {
       final userCred = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
-
-      // If user already existed, go to home
       final doc =
           await FirebaseFirestore.instance
               .collection('users')
               .doc(userCred.user!.uid)
               .get();
 
-      if (doc.exists) {
-        _goToHome();
-      } else {
-        // Save new user data
+      if (!doc.exists) {
         await FirebaseFirestore.instance
             .collection('users')
             .doc(userCred.user!.uid)
@@ -97,12 +94,13 @@ class _OtpPageState extends State<OtpPage> {
               'name': widget.name ?? '',
               'createdAt': DateTime.now().toIso8601String(),
             });
-
-        _goToHome();
       }
+
+      await _loadAndSyncWishlist(); // ✅ Load wishlist into provider
+      _goToHome();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid OTP or verification failed.")),
+        const SnackBar(content: Text("Invalid OTP or verification failed.")),
       );
     }
   }
@@ -113,6 +111,25 @@ class _OtpPageState extends State<OtpPage> {
       MaterialPageRoute(builder: (_) => HomePage()),
       (route) => false,
     );
+  }
+
+  Future<void> _loadAndSyncWishlist() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+    final wishlistIds = List<String>.from(
+      doc.data()?['wishlistProductIds'] ?? [],
+    );
+
+    if (mounted) {
+      final wishlistProvider = context.read<WishlistProvider>();
+      wishlistProvider.setWishlist(wishlistIds);
+    }
   }
 
   @override
