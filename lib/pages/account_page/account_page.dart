@@ -68,6 +68,7 @@ class _AccountPageState extends State<AccountPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AppAuthProvider>();
+    final user = auth.user;
     final isLoggedIn = auth.isLoggedIn;
 
     return Scaffold(
@@ -81,9 +82,9 @@ class _AccountPageState extends State<AccountPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileTile(auth),
+            _buildProfileTile(user),
             const SizedBox(height: 20),
-            _buildAccountOptions(context),
+            _buildAccountOptions(isLoggedIn),
             const Divider(height: 30, thickness: 5),
             _buildAccountTileSection(context),
             const Divider(height: 30, thickness: 5),
@@ -99,14 +100,21 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  Widget _buildProfileTile(AppAuthProvider auth) {
-    final user = auth.user;
-
+  Widget _buildProfileTile(User? user) {
     if (user == null) {
-      return ListTile(
-        leading: const CircleAvatar(radius: 30, child: Icon(Icons.person)),
-        title: const Text("Guest"),
-        subtitle: const Text("Please login to see your profile"),
+      return InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginPage()),
+          );
+        },
+        child: const ListTile(
+          leading: CircleAvatar(radius: 30, child: Icon(Icons.person)),
+          title: Text("Guest"),
+          subtitle: Text("Please login to see your profile"),
+          trailing: Icon(Icons.arrow_forward_ios, size: 16),
+        ),
       );
     }
 
@@ -151,7 +159,7 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  Widget _buildAccountOptions(BuildContext context) {
+  Widget _buildAccountOptions(bool isLoggedIn) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: GridView.count(
@@ -170,12 +178,17 @@ class _AccountPageState extends State<AccountPage> {
           _AccountButton(
             icon: Icons.notifications_outlined,
             label: "Reminders",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ReminderListPage()),
-              );
-            },
+            onPressed:
+                isLoggedIn
+                    ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ReminderListPage(),
+                        ),
+                      );
+                    }
+                    : _redirectToLogin,
           ),
           _AccountButton(
             icon: Icons.chat_bubble_outline,
@@ -189,6 +202,13 @@ class _AccountPageState extends State<AccountPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _redirectToLogin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 

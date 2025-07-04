@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/reminder_model.dart';
+import '../authentication/app_auth_provider.dart';
 import 'reminder_list_page.dart';
 
 class ReminderPage extends StatefulWidget {
@@ -73,9 +75,7 @@ class _ReminderPageState extends State<ReminderPage> {
           child: Wrap(
             children: [
               Padding(
-                padding: const EdgeInsets.only(
-                  left: 8.0,
-                ), // You can adjust the value
+                padding: const EdgeInsets.only(left: 12),
                 child: Text(
                   title,
                   style: const TextStyle(
@@ -84,7 +84,7 @@ class _ReminderPageState extends State<ReminderPage> {
                   ),
                 ),
               ),
-              Divider(thickness: 0.5),
+              const Divider(thickness: 0.5),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
@@ -112,6 +112,15 @@ class _ReminderPageState extends State<ReminderPage> {
   }
 
   Future<void> _saveReminder() async {
+    final userId = context.read<AppAuthProvider>().userId;
+
+    if (userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please log in to save reminders")),
+      );
+      return;
+    }
+
     if (_nameController.text.isNotEmpty &&
         selectedRelation != null &&
         selectedOccasion != null &&
@@ -126,11 +135,11 @@ class _ReminderPageState extends State<ReminderPage> {
 
       await FirebaseFirestore.instance
           .collection('users')
-          .doc('ersanjay') // Replace with dynamic user ID
+          .doc(userId)
           .collection('reminders')
           .add(reminder.toMap());
 
-      if (!mounted) return; // ✅ This ensures widget is still in tree
+      if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
@@ -142,7 +151,6 @@ class _ReminderPageState extends State<ReminderPage> {
       );
     } else {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all fields')),
       );
@@ -158,13 +166,13 @@ class _ReminderPageState extends State<ReminderPage> {
         child: ListView(
           children: [
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: RichText(
-                text: TextSpan(
+                text: const TextSpan(
                   text: "Save important occasions with us 👋\n",
                   style: TextStyle(
                     color: Colors.black,
@@ -181,18 +189,17 @@ class _ReminderPageState extends State<ReminderPage> {
                 ),
               ),
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'Add A Quick Reminder ⚡',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 20),
-
+            const SizedBox(height: 20),
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: "Gift Receiver's Name",
-                prefixIcon: Icon(Icons.person_outline),
+                prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -208,28 +215,11 @@ class _ReminderPageState extends State<ReminderPage> {
                           context,
                           'Select Relation',
                           relations,
-                          (val) {
-                            setState(() => selectedRelation = val);
-                          },
+                          (val) => setState(() => selectedRelation = val),
                         ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.people, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Text(selectedRelation ?? 'Relation'),
-                          const Spacer(),
-                          const Icon(Icons.arrow_drop_down),
-                        ],
-                      ),
+                    child: _buildDropdownTile(
+                      icon: Icons.people,
+                      label: selectedRelation ?? 'Relation',
                     ),
                   ),
                 ),
@@ -241,28 +231,11 @@ class _ReminderPageState extends State<ReminderPage> {
                           context,
                           'Select Occasion',
                           occasions,
-                          (val) {
-                            setState(() => selectedOccasion = val);
-                          },
+                          (val) => setState(() => selectedOccasion = val),
                         ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.cake, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Text(selectedOccasion ?? 'Occasion'),
-                          const Spacer(),
-                          const Icon(Icons.arrow_drop_down),
-                        ],
-                      ),
+                    child: _buildDropdownTile(
+                      icon: Icons.cake,
+                      label: selectedOccasion ?? 'Occasion',
                     ),
                   ),
                 ),
@@ -283,16 +256,35 @@ class _ReminderPageState extends State<ReminderPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade400,
-                padding: EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               onPressed: _saveReminder,
-              child: Text(
+              child: const Text(
                 'Save',
                 style: TextStyle(fontSize: 20, color: Colors.white),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownTile({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text(label),
+          const Spacer(),
+          const Icon(Icons.arrow_drop_down),
+        ],
       ),
     );
   }

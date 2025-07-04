@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/reminder_page.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/reminder_model.dart';
-import 'reminder_page.dart';
+import '../authentication/app_auth_provider.dart';
 
 class ReminderListPage extends StatefulWidget {
   const ReminderListPage({super.key});
@@ -13,7 +15,15 @@ class ReminderListPage extends StatefulWidget {
 }
 
 class _ReminderListPageState extends State<ReminderListPage> {
-  final String userId = 'ersanjay';
+  late String userId;
+
+  @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AppAuthProvider>();
+    userId = auth.userId;
+  }
+
   Future<List<Reminder>> _fetchReminders() async {
     final querySnapshot =
         await FirebaseFirestore.instance
@@ -23,9 +33,9 @@ class _ReminderListPageState extends State<ReminderListPage> {
             .orderBy('date')
             .get();
 
-    return querySnapshot.docs.map((doc) {
-      return Reminder.fromMap(doc.id, doc.data());
-    }).toList();
+    return querySnapshot.docs
+        .map((doc) => Reminder.fromMap(doc.id, doc.data()))
+        .toList();
   }
 
   @override
@@ -34,13 +44,15 @@ class _ReminderListPageState extends State<ReminderListPage> {
       future: _fetchReminders(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final reminders = snapshot.data ?? [];
 
         if (reminders.isEmpty) {
-          return ReminderPage(); // Redirect to add page
+          return const ReminderPage(); // Redirect to add reminder page
         }
 
         return Scaffold(
@@ -54,8 +66,11 @@ class _ReminderListPageState extends State<ReminderListPage> {
                   label: const Text("Add New Reminder"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade400,
-                    padding: EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-                    textStyle: TextStyle(fontSize: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 14,
+                    ),
+                    textStyle: const TextStyle(fontSize: 16),
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -70,6 +85,7 @@ class _ReminderListPageState extends State<ReminderListPage> {
                   itemCount: reminders.length,
                   itemBuilder:
                       (_, i) => _ReminderCard(
+                        userId: userId,
                         reminder: reminders[i],
                         onRefresh: () => setState(() {}),
                       ),
@@ -86,8 +102,13 @@ class _ReminderListPageState extends State<ReminderListPage> {
 class _ReminderCard extends StatelessWidget {
   final Reminder reminder;
   final VoidCallback onRefresh;
+  final String userId;
 
-  const _ReminderCard({required this.reminder, required this.onRefresh});
+  const _ReminderCard({
+    required this.reminder,
+    required this.onRefresh,
+    required this.userId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +178,7 @@ class _ReminderCard extends StatelessWidget {
                   ),
                 ),
                 InkWell(
-                  onTap: () => _showReminderOptions(context, reminder),
+                  onTap: () => _showReminderOptions(context),
                   child: const Icon(
                     Icons.edit_outlined,
                     color: Color(0xFF5E5A2F),
@@ -169,7 +190,7 @@ class _ReminderCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () {}, // Optional: Add gift logic
+                onPressed: () {}, // Optional: add gift logic
                 style: OutlinedButton.styleFrom(
                   foregroundColor: color,
                   side: BorderSide(color: color),
@@ -183,7 +204,7 @@ class _ReminderCard extends StatelessWidget {
     );
   }
 
-  void _showReminderOptions(BuildContext context, Reminder reminder) {
+  void _showReminderOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -210,18 +231,17 @@ class _ReminderCard extends StatelessWidget {
               leading: const Icon(Icons.delete_outline, color: Colors.red),
               title: const Text("Delete", style: TextStyle(color: Colors.red)),
               onTap: () async {
-                Navigator.pop(context); // Close bottom sheet immediately
+                Navigator.pop(context); // Close bottom sheet
 
                 await FirebaseFirestore.instance
                     .collection('users')
-                    .doc('ersanjay') // Replace with dynamic user ID
+                    .doc(userId)
                     .collection('reminders')
                     .doc(reminder.id)
                     .delete();
 
-                // Delay to ensure context is still valid
                 if (context.mounted) {
-                  onRefresh(); // Trigger state refresh in parent
+                  onRefresh();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Reminder deleted')),
                   );
