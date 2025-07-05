@@ -13,10 +13,12 @@ import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
+import 'package:joy_a_bloom_dev/utils/app_util.dart';
 import 'package:joy_a_bloom_dev/utils/wishlist_provider.dart';
 import 'package:joy_a_bloom_dev/widgets/chocolate_product_card.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
 import 'package:provider/provider.dart';
+
 import 'models/category.dart';
 import 'models/product.dart';
 import 'pages/home/delivery_location_page.dart';
@@ -670,7 +672,6 @@ class _HomePageState extends State<HomePage> {
 
               return ChocolateProductCard(
                 productData: productData,
-                cartQty: cartQty,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -680,305 +681,16 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 },
-                onAdd: () {
-                  setState(() {
-                    variantQuantities[variantId] = cartQty + 1;
-                  });
-                  addToCart(product, cartQty + 1, variantId);
-                },
-                onRemove: () {
-                  setState(() {
-                    if (cartQty > 1) {
-                      variantQuantities[variantId] = cartQty - 1;
-                      addToCart(product, cartQty - 1, variantId);
-                    } else {
-                      variantQuantities.remove(variantId);
-                      removeFromCart(product, variantId);
-                    }
-                  });
-                },
-                onVariantTap: () async {
-                  await showVariantsBottomSheet(context, product);
-                  setState(() {});
-                },
+                onVariantTap:
+                    () => ChocolateProductCard.showVariantsBottomSheet(
+                      context,
+                      product,
+                    ),
               );
             },
           ),
         ),
       ],
-    );
-  }
-
-  void addToCart(Product product, int quantity, String variantId) {
-    debugPrint("Added to cart: ${product.name} ($variantId) → $quantity");
-  }
-
-  void removeFromCart(Product product, String variantId) {
-    debugPrint("Removed from cart: ${product.name} ($variantId)");
-  }
-
-  Future<void> showVariantsBottomSheet(BuildContext context, Product product) {
-    final variants =
-        product.extraAttributes?.chocolateAttribute?.variants ?? [];
-
-    return showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.6,
-          maxChildSize: 0.7,
-          minChildSize: 0.3,
-          builder: (context, scrollController) {
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-                  child: Column(
-                    children: [
-                      Text(
-                        product.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ✅ Scrollable variant list inside Expanded
-                      Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          itemCount: variants.length,
-                          itemBuilder: (context, index) {
-                            final v = variants[index];
-                            final variantId = "${product.id}_${v.sku}";
-                            final qty = variantQuantities[variantId] ?? 0;
-                            final pricePerGram =
-                                v.weightInGrams > 0
-                                    ? v.price / v.weightInGrams
-                                    : 0.0;
-
-                            return Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: ListTile(
-                                leading: Container(
-                                  width: 60,
-                                  height: 60,
-                                  padding: const EdgeInsets.all(1),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Image.network(
-                                      product.imageUrls.first,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Text(
-                                      "₹${v.price.toStringAsFixed(0)}",
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    if (v.oldPrice != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 6),
-                                        child: Text(
-                                          "₹${v.oldPrice!.toStringAsFixed(0)}",
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey,
-                                            decoration:
-                                                TextDecoration.lineThrough,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${v.weightInGrams.toInt()} g",
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    Text(
-                                      "₹${pricePerGram.toStringAsFixed(2)} / g",
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                trailing:
-                                    qty == 0
-                                        ? TextButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              variantQuantities[variantId] = 1;
-                                            });
-                                            addToCart(product, 1, variantId);
-                                          },
-                                          style: TextButton.styleFrom(
-                                            backgroundColor:
-                                                Colors.green.shade50,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            "Add",
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                            ),
-                                          ),
-                                        )
-                                        : Container(
-                                          height: 34,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            border: Border.all(
-                                              color: Colors.green,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              GestureDetector(
-                                                onTap: () {
-                                                  setState(() {
-                                                    if (qty > 1) {
-                                                      variantQuantities[variantId] =
-                                                          qty - 1;
-                                                      addToCart(
-                                                        product,
-                                                        qty - 1,
-                                                        variantId,
-                                                      );
-                                                    } else {
-                                                      variantQuantities.remove(
-                                                        variantId,
-                                                      );
-                                                      removeFromCart(
-                                                        product,
-                                                        variantId,
-                                                      );
-                                                    }
-                                                  });
-                                                },
-                                                child: const Icon(
-                                                  Icons.remove,
-                                                  size: 24,
-                                                  color: Colors.green,
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                    ),
-                                                child: Text(
-                                                  '$qty',
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.green,
-                                                  ),
-                                                ),
-                                              ),
-                                              GestureDetector(
-                                                onTap: () {
-                                                  setState(() {
-                                                    variantQuantities[variantId] =
-                                                        qty + 1;
-                                                  });
-                                                  addToCart(
-                                                    product,
-                                                    qty + 1,
-                                                    variantId,
-                                                  );
-                                                },
-                                                child: const Icon(
-                                                  Icons.add,
-                                                  size: 24,
-                                                  color: Colors.green,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ✅ Fixed "Done" button at bottom
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 24.0,
-                              vertical: 10,
-                            ),
-                            child: Text(
-                              "Done",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
     );
   }
 
@@ -1008,8 +720,14 @@ class _HomePageState extends State<HomePage> {
               return ProductCard(
                 productData: productData,
                 isWishlisted: wishlistProvider.isWishlisted(productId),
-                onWishlistToggle:
-                    () => wishlistProvider.toggleWishlist(productId),
+                onWishlistToggle: () async {
+                  final isLoggedIn = await AppUtil.ensureLoggedInGlobal(
+                    context,
+                  );
+                  if (!isLoggedIn) return;
+
+                  wishlistProvider.toggleWishlist(productId);
+                },
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1055,8 +773,14 @@ class _HomePageState extends State<HomePage> {
               return ProductCard(
                 productData: productData,
                 isWishlisted: wishlistProvider.isWishlisted(productId),
-                onWishlistToggle:
-                    () => wishlistProvider.toggleWishlist(productId),
+                onWishlistToggle: () async {
+                  final isLoggedIn = await AppUtil.ensureLoggedInGlobal(
+                    context,
+                  );
+                  if (!isLoggedIn) return;
+
+                  wishlistProvider.toggleWishlist(productId);
+                },
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1102,8 +826,14 @@ class _HomePageState extends State<HomePage> {
               return ProductCard(
                 productData: productData,
                 isWishlisted: wishlistProvider.isWishlisted(productId),
-                onWishlistToggle:
-                    () => wishlistProvider.toggleWishlist(productId),
+                onWishlistToggle: () async {
+                  final isLoggedIn = await AppUtil.ensureLoggedInGlobal(
+                    context,
+                  );
+                  if (!isLoggedIn) return;
+
+                  wishlistProvider.toggleWishlist(productId);
+                },
                 onTap: () {
                   Navigator.push(
                     context,

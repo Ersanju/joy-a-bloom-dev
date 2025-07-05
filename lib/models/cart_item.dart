@@ -3,7 +3,7 @@ class CartItem {
   final String productName;
   final String productImage;
   final int quantity;
-  final String variant; // size/weight etc.
+  final String variant; // unique variant ID (e.g., productId_sku)
   final double price;
 
   CartItem({
@@ -15,25 +15,43 @@ class CartItem {
     required this.price,
   });
 
-  factory CartItem.fromMap(Map<String, dynamic> map) {
+  factory CartItem.fromJson(Map<String, dynamic> json) {
     return CartItem(
-      productId: map['productId'],
-      productName: map['productName'],
-      productImage: map['productImage'],
-      quantity: map['quantity'],
-      variant: map['variant'],
-      price: (map['price'] as num).toDouble(),
+      productId: json['productId'],
+      productName: json['productName'],
+      productImage: json['productImage'],
+      quantity: json['quantity'],
+      variant: json['variant'],
+      price: (json['price'] as num).toDouble(),
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'productId': productId,
-      'productName': productName,
-      'productImage': productImage,
-      'quantity': quantity,
-      'variant': variant,
-      'price': price,
-    };
+  Map<String, dynamic> toJson() => {
+    'productId': productId,
+    'productName': productName,
+    'productImage': productImage,
+    'quantity': quantity,
+    'variant': variant,
+    'price': price,
+  };
+
+  CartItem copyWith({int? quantity}) {
+    return CartItem(
+      productId: productId,
+      productName: productName,
+      productImage: productImage,
+      quantity: quantity ?? this.quantity,
+      variant: variant,
+      price: price,
+    );
   }
+
+  static CartItem empty() => CartItem(
+    productId: '',
+    productName: '',
+    productImage: '',
+    quantity: 0,
+    variant: '',
+    price: 0.0,
+  );
 }

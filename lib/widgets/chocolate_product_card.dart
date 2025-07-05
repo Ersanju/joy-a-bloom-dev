@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/product.dart';
+import '../utils/cart_provider.dart';
 
 class ChocolateProductCard extends StatelessWidget {
   final Map<String, dynamic> productData;
   final VoidCallback onTap;
-  final int cartQty;
-  final VoidCallback onAdd;
-  final VoidCallback onRemove;
   final VoidCallback onVariantTap;
 
   const ChocolateProductCard({
     super.key,
     required this.productData,
     required this.onTap,
-    required this.cartQty,
-    required this.onAdd,
-    required this.onRemove,
     required this.onVariantTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cartProvider = Provider.of<CartProvider>(context);
     final imageUrl =
         (productData['imageUrls'] as List?)?.first ??
         "https://via.placeholder.com/150";
@@ -27,12 +26,13 @@ class ChocolateProductCard extends StatelessWidget {
 
     final chocolateAttr = productData['extraAttributes']?['chocolateAttribute'];
     final variant = (chocolateAttr?['variants'] as List?)?.first;
-
     if (variant == null) return const SizedBox.shrink();
 
     final price = variant['price'] ?? 0;
     final oldPrice = variant['oldPrice'];
     final weightInGrams = variant['weightInGrams']?.toInt() ?? 0;
+    final variantId = "${productData['id']}_${variant['sku']}";
+    final cartQty = cartProvider.getQty(variantId);
 
     String? discountLabel;
     if (oldPrice != null && oldPrice > price) {
@@ -182,7 +182,14 @@ class ChocolateProductCard extends StatelessWidget {
             child:
                 cartQty == 0
                     ? GestureDetector(
-                      onTap: onAdd,
+                      onTap:
+                          () => cartProvider.addItem(
+                            variantId,
+                            productId: productData['id'],
+                            productName: productData['name'],
+                            productImage: imageUrl,
+                            price: (variant['price'] ?? 0).toDouble(),
+                          ),
                       child: Container(
                         width: 32,
                         height: 32,
@@ -209,7 +216,7 @@ class ChocolateProductCard extends StatelessWidget {
                       child: Row(
                         children: [
                           GestureDetector(
-                            onTap: onRemove,
+                            onTap: () => cartProvider.removeItem(variantId),
                             child: const Icon(
                               Icons.remove,
                               size: 20,
@@ -227,7 +234,14 @@ class ChocolateProductCard extends StatelessWidget {
                             ),
                           ),
                           GestureDetector(
-                            onTap: onAdd,
+                            onTap:
+                                () => cartProvider.addItem(
+                                  variantId,
+                                  productId: productData['id'],
+                                  productName: productData['name'],
+                                  productImage: imageUrl,
+                                  price: (variant['price'] ?? 0).toDouble(),
+                                ),
                             child: const Icon(
                               Icons.add,
                               size: 20,
@@ -240,6 +254,263 @@ class ChocolateProductCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  static Future<void> showVariantsBottomSheet(
+    BuildContext context,
+    Product product,
+  ) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final variants =
+        product.extraAttributes?.chocolateAttribute?.variants ?? [];
+
+    return showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          maxChildSize: 0.7,
+          minChildSize: 0.3,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                  child: Column(
+                    children: [
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ✅ Variant list
+                      Expanded(
+                        child: ListView.builder(
+                          controller: scrollController,
+                          itemCount: variants.length,
+                          itemBuilder: (context, index) {
+                            final v = variants[index];
+                            final variantId = "${product.id}_${v.sku}";
+                            final qty = cartProvider.getQty(variantId);
+                            final pricePerGram =
+                                v.weightInGrams > 0
+                                    ? v.price / v.weightInGrams
+                                    : 0.0;
+
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 60,
+                                  height: 60,
+                                  padding: const EdgeInsets.all(1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      product.imageUrls.first,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      "₹${v.price.toStringAsFixed(0)}",
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (v.oldPrice != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: Text(
+                                          "₹${v.oldPrice!.toStringAsFixed(0)}",
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                            decoration:
+                                                TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${v.weightInGrams.toInt()} g",
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    Text(
+                                      "₹${pricePerGram.toStringAsFixed(2)} / g",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing:
+                                    qty == 0
+                                        ? TextButton(
+                                          onPressed: () {
+                                            cartProvider.addItem(
+                                              variantId,
+                                              productId: product.id,
+                                              productName: product.name,
+                                              productImage:
+                                                  product.imageUrls.first,
+                                              price: v.price,
+                                            );
+                                            setState(() {});
+                                          },
+                                          style: TextButton.styleFrom(
+                                            backgroundColor:
+                                                Colors.green.shade50,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "Add",
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        )
+                                        : Container(
+                                          height: 34,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            border: Border.all(
+                                              color: Colors.green,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () {
+                                                  cartProvider.removeItem(
+                                                    variantId,
+                                                  );
+                                                  setState(() {});
+                                                },
+                                                child: const Icon(
+                                                  Icons.remove,
+                                                  size: 24,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                    ),
+                                                child: Text(
+                                                  '$qty',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              ),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  cartProvider.addItem(
+                                                    variantId,
+                                                    productId: product.id,
+                                                    productName: product.name,
+                                                    productImage:
+                                                        product.imageUrls.first,
+                                                    price: v.price,
+                                                  );
+                                                  setState(() {});
+                                                },
+                                                child: const Icon(
+                                                  Icons.add,
+                                                  size: 24,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                              vertical: 10,
+                            ),
+                            child: Text(
+                              "Done",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }

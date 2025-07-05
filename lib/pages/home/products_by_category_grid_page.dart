@@ -83,10 +83,12 @@ class _ProductsByCategoryGridPageState
                                         ),
                                   ),
                                 ),
-                            cartQty: 0,
-                            onAdd: () {},
-                            onRemove: () {},
-                            onVariantTap: () {},
+                            onVariantTap:
+                                () =>
+                                    ChocolateProductCard.showVariantsBottomSheet(
+                                      context,
+                                      Product.fromJson(productMap),
+                                    ),
                           );
                         } else {
                           return ProductCard(

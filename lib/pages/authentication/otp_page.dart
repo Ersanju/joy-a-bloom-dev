@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../home_page.dart';
+import '../../models/cart_item.dart';
+import '../../utils/cart_provider.dart';
 import '../../utils/wishlist_provider.dart';
 
 class OtpPage extends StatefulWidget {
@@ -96,7 +98,9 @@ class _OtpPageState extends State<OtpPage> {
             });
       }
 
-      await _loadAndSyncWishlist(); // ✅ Load wishlist into provider
+      await _loadAndSyncWishlist(); // ✅ Load wishlist
+      await _loadAndSyncCart(); // ✅ Load cart
+
       _goToHome();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -129,6 +133,27 @@ class _OtpPageState extends State<OtpPage> {
     if (mounted) {
       final wishlistProvider = context.read<WishlistProvider>();
       wishlistProvider.setWishlist(wishlistIds);
+    }
+  }
+
+  Future<void> _loadAndSyncCart() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+    final cartList = doc.data()?['cartItems'] as List<dynamic>? ?? [];
+
+    final cartProvider = context.read<CartProvider>();
+    await cartProvider.clearCart(); // Clear old cart
+
+    for (final item in cartList) {
+      final cartItem = CartItem.fromJson(item);
+      cartProvider.setQty(cartItem.variant, cartItem.quantity);
     }
   }
 

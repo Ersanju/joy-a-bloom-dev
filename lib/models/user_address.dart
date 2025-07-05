@@ -9,7 +9,7 @@ class UserAddress {
   final String city;
   final String state;
   final String country;
-  final GeoPoint? location; // NEW FIELD
+  final GeoPoint? location;
 
   UserAddress({
     required this.label,
@@ -23,21 +23,21 @@ class UserAddress {
     this.location,
   });
 
-  factory UserAddress.fromMap(Map<String, dynamic> map) {
+  factory UserAddress.fromJson(Map<String, dynamic> json) {
     return UserAddress(
-      label: map['label'] ?? '',
-      street: map['street'] ?? '',
-      area: map['area'] ?? '',
-      landmark: map['landmark'] ?? '',
-      pinCode: map['pinCode'] ?? '',
-      city: map['city'] ?? '',
-      state: map['state'] ?? '',
-      country: map['country'] ?? '',
-      location: map['location'] != null ? map['location'] as GeoPoint : null,
+      label: json['label'] ?? '',
+      street: json['street'] ?? '',
+      area: json['area'] ?? '',
+      landmark: json['landmark'] ?? '',
+      pinCode: json['pinCode'] ?? '',
+      city: json['city'] ?? '',
+      state: json['state'] ?? '',
+      country: json['country'] ?? '',
+      location: json['location'] != null ? json['location'] as GeoPoint : null,
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'label': label,
       'street': street,

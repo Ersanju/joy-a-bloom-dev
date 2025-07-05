@@ -1,16 +1,19 @@
 import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/wishlist_page.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../home_page.dart';
 import '../../utils/app_util.dart';
-import '../authentication/login_page.dart';
-import '../authentication/app_auth_provider.dart';
+import '../../utils/cart_provider.dart';
+import '../../utils/wishlist_provider.dart';
 import '../account_page/edit_profile_page.dart';
 import '../account_page/reminder_list_page.dart';
-import '../../home_page.dart';
+import '../authentication/app_auth_provider.dart';
+import '../authentication/login_page.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -357,7 +360,18 @@ class _AccountPageState extends State<AccountPage> {
                   ),
             );
             if (confirm == true) {
+              final cartProvider = Provider.of<CartProvider>(
+                context,
+                listen: false,
+              );
+              final wishlistProvider = Provider.of<WishlistProvider>(
+                context,
+                listen: false,
+              );
+
               await FirebaseAuth.instance.signOut();
+              cartProvider.clearCart(); // ✅ clear cart
+              wishlistProvider.setWishlist([]); // ✅ clear wishlist
               if (!mounted) return;
               Navigator.pushAndRemoveUntil(
                 context,

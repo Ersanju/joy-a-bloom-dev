@@ -1,9 +1,10 @@
-import 'package:joy_a_bloom_dev/models/user_address.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:joy_a_bloom_dev/models/user_order_model.dart';
 
 import 'cart_item.dart';
-import 'order_model.dart';
+import 'user_address.dart';
 
-class User {
+class AppUser {
   final String uid;
   final String name;
   final String email;
@@ -13,13 +14,13 @@ class User {
   final String? gender;
   final List<String> wishlistProductIds;
   final List<UserAddress> addresses;
-  final List<Order> orders;
+  final List<UserOrder> orders;
   final List<CartItem> cartItems;
   final DateTime createdAt;
   final DateTime? lastLoginAt;
   final String? fcmToken;
 
-  User({
+  AppUser({
     required this.uid,
     required this.name,
     required this.email,
@@ -36,50 +37,60 @@ class User {
     this.fcmToken,
   });
 
-  factory User.fromMap(Map<String, dynamic> map, String uid) {
-    return User(
+  factory AppUser.fromJson(Map<String, dynamic> json, String uid) {
+    return AppUser(
       uid: uid,
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      phone: map['phone'] ?? '',
-      profileImageUrl: map['profileImageUrl'],
-      dob: map['dob'] != null ? DateTime.tryParse(map['dob']) : null,
-      gender: map['gender'],
-      wishlistProductIds: List<String>.from(map['wishlistProductIds'] ?? []),
-      addresses: (map['addresses'] as List<dynamic>?)
-          ?.map((a) => UserAddress.fromMap(a))
-          .toList() ??
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
+      profileImageUrl: json['profileImageUrl'],
+      dob: _parseDate(json['dob']),
+      gender: json['gender'],
+      wishlistProductIds: List<String>.from(json['wishlistProductIds'] ?? []),
+      addresses:
+          (json['addresses'] as List<dynamic>?)
+              ?.map((a) => UserAddress.fromJson(a))
+              .toList() ??
           [],
-      orders: (map['orders'] as List<dynamic>?)
-          ?.map((o) => Order.fromMap(o))
-          .toList() ??
+      orders:
+          (json['orders'] as List<dynamic>?)
+              ?.map((o) => UserOrder.fromJson(o))
+              .toList() ??
           [],
-      cartItems: (map['cartItems'] as List<dynamic>?)
-          ?.map((c) => CartItem.fromMap(c))
-          .toList() ??
+      cartItems:
+          (json['cartItems'] as List<dynamic>?)
+              ?.map((c) => CartItem.fromJson(c))
+              .toList() ??
           [],
-      createdAt: DateTime.parse(map['createdAt']),
-      lastLoginAt:
-      map['lastLoginAt'] != null ? DateTime.tryParse(map['lastLoginAt']) : null,
-      fcmToken: map['fcmToken'],
+      createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
+      lastLoginAt: _parseDate(json['lastLoginAt']),
+      fcmToken: json['fcmToken'],
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'name': name,
       'email': email,
       'phone': phone,
       'profileImageUrl': profileImageUrl,
-      'dob': dob?.toIso8601String(),
+      'dob': dob != null ? Timestamp.fromDate(dob!) : null,
       'gender': gender,
       'wishlistProductIds': wishlistProductIds,
-      'addresses': addresses.map((a) => a.toMap()).toList(),
-      'orders': orders.map((o) => o.toMap()).toList(),
-      'cartItems': cartItems.map((c) => c.toMap()).toList(),
-      'createdAt': createdAt.toIso8601String(),
-      'lastLoginAt': lastLoginAt?.toIso8601String(),
+      'addresses': addresses.map((a) => a.toJson()).toList(),
+      'orders': orders.map((o) => o.toJson()).toList(),
+      'cartItems': cartItems.map((c) => c.toJson()).toList(),
+      'createdAt': Timestamp.fromDate(createdAt),
+      'lastLoginAt':
+          lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
       'fcmToken': fcmToken,
     };
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

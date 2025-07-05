@@ -1,12 +1,51 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
+import '../pages/authentication/app_auth_provider.dart';
+import '../pages/authentication/login_page.dart';
 
 class AppUtil {
+  static Future<bool> ensureLoggedInGlobal(BuildContext context) async {
+    final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
+
+    if (authProvider.isLoggedIn) return true;
+
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text("Login Required"),
+            content: const Text("Please login to continue."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Login"),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldLogin == true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    }
+
+    return false;
+  }
+
   static Future<String?> pickAndUploadProfileImage({
     required BuildContext context,
     required User user,
