@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joy_a_bloom_dev/models/review.dart';
 
 import 'extra_attributes.dart';
@@ -44,37 +44,40 @@ class Product {
     required this.createdBy,
   });
 
-  factory Product.fromJson(Map<String, dynamic> json) => Product(
-    id: json['id'],
-    name: json['name'],
-    categoryId: json['categoryId'],
-    subCategoryIds: List<String>.from(json['subCategoryIds']),
-    productType: json['productType'],
-    imageUrls: List<String>.from(json['imageUrls']),
-    tags: List<String>.from(json['tags']),
-    isAvailable: json['isAvailable'],
-    stockQuantity: json['stockQuantity'],
-    popularityScore: json['popularityScore'],
-    productDescription: List<String>.from(json['productDescription']),
-    careInstruction: List<String>.from(json['careInstruction']),
-    deliveryInformation: List<String>.from(json['deliveryInformation']),
-    extraAttributes:
-        json['extraAttributes'] != null
-            ? ExtraAttributes.fromJson(json['extraAttributes'])
-            : null,
-    reviews:
-        (json['reviews'] as List<dynamic>?)
-            ?.map((e) => Review.fromJson(e))
-            .toList() ??
-        [],
-    createdAt: json['createdAt'] != null
-        ? DateTime.parse(json['createdAt'])
-        : DateTime.now(), // or throw/fallback
-    updatedAt: json['updatedAt'] != null
-        ? DateTime.parse(json['updatedAt'])
-        : DateTime.now(),
-    createdBy: json['createdBy'] ?? 'system', // fallback or required validation
-  );
+  factory Product.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      if (value is String) return DateTime.parse(value);
+      if (value is Timestamp) return value.toDate();
+      return DateTime.now();
+    }
+
+    return Product(
+      id: json['id'],
+      name: json['name'],
+      categoryId: json['categoryId'],
+      subCategoryIds: List<String>.from(json['subCategoryIds']),
+      productType: json['productType'],
+      imageUrls: List<String>.from(json['imageUrls']),
+      tags: List<String>.from(json['tags']),
+      isAvailable: json['isAvailable'],
+      stockQuantity: json['stockQuantity'],
+      popularityScore: json['popularityScore'],
+      productDescription: List<String>.from(json['productDescription']),
+      careInstruction: List<String>.from(json['careInstruction']),
+      deliveryInformation: List<String>.from(json['deliveryInformation']),
+      extraAttributes: json['extraAttributes'] != null
+          ? ExtraAttributes.fromJson(json['extraAttributes'])
+          : null,
+      reviews: (json['reviews'] as List<dynamic>?)
+          ?.map((e) => Review.fromJson(e))
+          .toList() ??
+          [],
+      createdAt: parseDate(json['createdAt']),
+      updatedAt: parseDate(json['updatedAt']),
+      createdBy: json['createdBy'] ?? 'system',
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -96,4 +99,5 @@ class Product {
     'updatedAt': updatedAt.toIso8601String(),
     'createdBy': createdBy,
   };
+
 }
