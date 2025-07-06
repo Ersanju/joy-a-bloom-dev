@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../home_page.dart';
@@ -21,12 +22,11 @@ class OtpPage extends StatefulWidget {
 
 class _OtpPageState extends State<OtpPage> {
   String? _verificationId;
-  final _otpController = TextEditingController();
   final List<TextEditingController> _otpControllers = List.generate(
     6,
-    (index) => TextEditingController(),
+    (_) => TextEditingController(),
   );
-
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _showOtpSentMessage = true;
 
   @override
@@ -47,7 +47,7 @@ class _OtpPageState extends State<OtpPage> {
       phoneNumber: widget.phone,
       verificationCompleted: (credential) async {
         await FirebaseAuth.instance.signInWithCredential(credential);
-        _goToHome(); // ✅ This method is already defined below
+        _goToHome();
       },
       verificationFailed: (e) {
         ScaffoldMessenger.of(
@@ -80,6 +80,7 @@ class _OtpPageState extends State<OtpPage> {
       final userCred = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
+
       final doc =
           await FirebaseFirestore.instance
               .collection('users')
@@ -98,8 +99,8 @@ class _OtpPageState extends State<OtpPage> {
             });
       }
 
-      await _loadAndSyncWishlist(); // ✅ Load wishlist
-      await _loadAndSyncCart(); // ✅ Load cart
+      await _loadAndSyncWishlist();
+      await _loadAndSyncCart();
 
       _goToHome();
     } catch (e) {
@@ -112,7 +113,7 @@ class _OtpPageState extends State<OtpPage> {
   void _goToHome() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => HomePage()),
+      MaterialPageRoute(builder: (_) => const HomePage()),
       (route) => false,
     );
   }
@@ -131,8 +132,7 @@ class _OtpPageState extends State<OtpPage> {
     );
 
     if (mounted) {
-      final wishlistProvider = context.read<WishlistProvider>();
-      wishlistProvider.setWishlist(wishlistIds);
+      context.read<WishlistProvider>().setWishlist(wishlistIds);
     }
   }
 
@@ -145,11 +145,10 @@ class _OtpPageState extends State<OtpPage> {
             .collection('users')
             .doc(user.uid)
             .get();
-
     final cartList = doc.data()?['cartItems'] as List<dynamic>? ?? [];
 
     final cartProvider = context.read<CartProvider>();
-    await cartProvider.clearCart(); // Clear old cart
+    await cartProvider.clearCart();
 
     for (final item in cartList) {
       final cartItem = CartItem.fromJson(item);
@@ -159,8 +158,11 @@ class _OtpPageState extends State<OtpPage> {
 
   @override
   void dispose() {
-    for (var controller in _otpControllers) {
+    for (final controller in _otpControllers) {
       controller.dispose();
+    }
+    for (final node in _focusNodes) {
+      node.dispose();
     }
     super.dispose();
   }
@@ -193,7 +195,7 @@ class _OtpPageState extends State<OtpPage> {
                 const SizedBox(width: 8),
                 InkWell(
                   onTap: () {
-                    // Handle change number
+                    Navigator.pop(context); // Change number
                   },
                   child: const Text(
                     "Change",
@@ -208,8 +210,8 @@ class _OtpPageState extends State<OtpPage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.email),
-                SizedBox(width: 8),
+                const Icon(Icons.email),
+                const SizedBox(width: 8),
                 Text(widget.email),
               ],
             ),
@@ -219,21 +221,41 @@ class _OtpPageState extends State<OtpPage> {
               children: List.generate(6, (index) {
                 return SizedBox(
                   width: 45,
-                  height: 45,
-                  child: TextField(
-                    controller: _otpControllers[index],
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    textAlign: TextAlign.center,
-                    decoration: const InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (value) {
-                      if (value.isNotEmpty && index < 5) {
-                        FocusScope.of(context).nextFocus();
+                  height: 50,
+                  child: RawKeyboardListener(
+                    focusNode: FocusNode(),
+                    onKey: (event) {
+                      if (event.logicalKey == LogicalKeyboardKey.backspace &&
+                          _otpControllers[index].text.isEmpty &&
+                          index > 0) {
+                        _focusNodes[index - 1].requestFocus();
                       }
                     },
+                    child: TextField(
+                      controller: _otpControllers[index],
+                      focusNode: _focusNodes[index],
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      maxLength: 1,
+                      decoration: const InputDecoration(
+                        counterText: '',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        if (value.isNotEmpty) {
+                          _otpControllers[index].text = value;
+                          _otpControllers[index]
+                              .selection = TextSelection.collapsed(offset: 1);
+
+                          if (index < 5) {
+                            _focusNodes[index + 1].requestFocus();
+                          } else {
+                            _focusNodes[index].unfocus();
+                            _verifyOtp(); // Auto-verify
+                          }
+                        }
+                      },
+                    ),
                   ),
                 );
               }),
@@ -244,9 +266,7 @@ class _OtpPageState extends State<OtpPage> {
                 const Text("Valid for 2 mins."),
                 const Spacer(),
                 InkWell(
-                  onTap: () {
-                    // Handle resend OTP
-                  },
+                  onTap: _sendOtp,
                   child: const Text(
                     "Resend OTP",
                     style: TextStyle(
@@ -258,24 +278,23 @@ class _OtpPageState extends State<OtpPage> {
               ],
             ),
             const Spacer(),
-            _showOtpSentMessage
-                ? Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6EA),
-                    border: Border.all(color: Colors.green),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.check_box, color: Colors.green),
-                      SizedBox(width: 8),
-                      Text("OTP sent to mobile & email ID."),
-                    ],
-                  ),
-                )
-                : const SizedBox.shrink(),
+            if (_showOtpSentMessage)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6EA),
+                  border: Border.all(color: Colors.green),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.check_box, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text("OTP sent to mobile & email ID."),
+                  ],
+                ),
+              ),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
