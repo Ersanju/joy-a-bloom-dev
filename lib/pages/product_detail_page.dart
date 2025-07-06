@@ -1,13 +1,17 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+
 import '../models/product.dart';
 import '../models/review.dart';
+import '../utils/cart_provider.dart';
 import '../utils/wishlist_provider.dart';
 import '../widgets/product_card.dart';
+import 'cart/cart_page.dart';
 import 'free_message_card_page.dart';
 
 class ProductDetailPage extends StatefulWidget {
@@ -186,6 +190,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           ),
         ),
       ),
+      bottomNavigationBar: buildBottomAddToCartButton(context, selectedVariant),
     );
   }
 
@@ -1395,10 +1400,66 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     return similarProducts;
   }
+
+  Widget buildBottomAddToCartButton(
+    BuildContext context,
+    Map<String, dynamic> selectedVariant,
+  ) {
+    final cartProvider = Provider.of<CartProvider>(context);
+    final product = widget.productData;
+    final productId = product['id'];
+    final productName = product['name'];
+    final imageUrl = (product['imageUrls'] as List).first;
+    final price = (selectedVariant['price'] as num).toDouble();
+    final sku = selectedVariant['sku'];
+    final variantId = "${productId}_$sku";
+
+    final isInCart = cartProvider.getQty(variantId) > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isInCart ? Colors.orange.shade600 : Colors.green.shade600,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        onPressed: () {
+          if (isInCart) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CartPage()),
+            );
+          } else {
+            cartProvider.addItem(
+              variantId,
+              productId: productId,
+              productName: productName,
+              productImage: imageUrl,
+              price: price,
+            );
+            setState(() {}); // refresh the button
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text("Added to cart")));
+          }
+        },
+        child: Text(
+          isInCart ? "Go to Cart" : "Add to Cart",
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
 }
 
 class ReviewUserInfo extends StatelessWidget {
   final Review review;
+
   const ReviewUserInfo({super.key, required this.review});
 
   @override

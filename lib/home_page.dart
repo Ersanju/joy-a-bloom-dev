@@ -8,12 +8,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/account_page.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/app_auth_provider.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/login_page.dart';
+import 'package:joy_a_bloom_dev/pages/cart/cart_page.dart';
 import 'package:joy_a_bloom_dev/pages/category/category_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
 import 'package:joy_a_bloom_dev/utils/app_util.dart';
+import 'package:joy_a_bloom_dev/utils/location_provider.dart';
 import 'package:joy_a_bloom_dev/utils/wishlist_provider.dart';
 import 'package:joy_a_bloom_dev/widgets/chocolate_product_card.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
@@ -380,12 +382,16 @@ class _HomePageState extends State<HomePage> {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() {
         _locationText = 'Location services disabled';
+        _pinCode = '';
       });
+      context.read<LocationProvider>().update(
+        location: _locationText,
+        pinCode: '',
+      );
       return;
     }
 
@@ -395,7 +401,12 @@ class _HomePageState extends State<HomePage> {
       if (permission == LocationPermission.denied) {
         setState(() {
           _locationText = 'Permission denied';
+          _pinCode = '';
         });
+        context.read<LocationProvider>().update(
+          location: _locationText,
+          pinCode: '',
+        );
         return;
       }
     }
@@ -403,38 +414,65 @@ class _HomePageState extends State<HomePage> {
     if (permission == LocationPermission.deniedForever) {
       setState(() {
         _locationText = 'Permission permanently denied';
+        _pinCode = '';
       });
+      context.read<LocationProvider>().update(
+        location: _locationText,
+        pinCode: '',
+      );
       return;
     }
 
-    // Get current position
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-    // Convert coordinates to address
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
 
-    if (placemarks.isNotEmpty) {
-      final place = placemarks.first;
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final locationText = '${place.locality}, ${place.administrativeArea}';
+        final pinCode = '${place.postalCode}';
+
+        setState(() {
+          _locationText = locationText;
+          _pinCode = pinCode;
+        });
+
+        context.read<LocationProvider>().update(
+          location: locationText,
+          pinCode: pinCode,
+        );
+      } else {
+        setState(() {
+          _locationText = 'Location not found';
+          _pinCode = '';
+        });
+        context.read<LocationProvider>().update(
+          location: _locationText,
+          pinCode: '',
+        );
+      }
+    } catch (e) {
       setState(() {
-        _locationText = '${place.locality}, ${place.administrativeArea}';
-        _pinCode = '${place.postalCode}';
+        _locationText = 'Error fetching location';
+        _pinCode = '';
       });
-    } else {
-      setState(() {
-        _locationText = 'Location not found';
-      });
+      context.read<LocationProvider>().update(
+        location: _locationText,
+        pinCode: '',
+      );
     }
   }
 
   List<Widget> get _pages => [
     buildHomeContent(),
     CategoryPage(),
-    Text('data'),
+    CartPage(),
     AccountPage(),
   ];
 

@@ -15,7 +15,34 @@ class CartProvider extends ChangeNotifier {
     _loadCart(); // Auto-load on init
   }
 
-  /// Get quantity by variant ID
+  /// Accurate total price
+  double get rawProductTotal =>
+      _cartItems.fold(0.0, (sum, item) => sum + item.price * item.quantity);
+
+  /// Rounded total price
+  int get productPrice => rawProductTotal.toInt();
+
+  /// Dynamic discount rules
+  int get discount {
+    if (productPrice > 1000) return 100;
+    if (productPrice > 500) return 50;
+    return 0;
+  }
+
+  /// Delivery charge logic
+  int get deliveryCharge => productPrice > 500 ? 0 : 19;
+
+  /// Convenience charge logic
+  int get convenienceCharge => productPrice > 500 ? 0 : 39;
+
+  /// Final subtotal after discount
+  int get subtotal =>
+      (productPrice - discount).clamp(0, double.infinity).toInt();
+
+  /// Final payable amount
+  int get total => subtotal + deliveryCharge + convenienceCharge;
+
+  /// Get quantity for a specific variant
   int getQty(String variantId) {
     return _cartItems
         .firstWhere(
@@ -25,7 +52,7 @@ class CartProvider extends ChangeNotifier {
         .quantity;
   }
 
-  /// Add item
+  /// Add item to cart
   Future<void> addItem(
     String variantId, {
     required String productId,
@@ -57,7 +84,7 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Remove item
+  /// Remove item from cart
   Future<void> removeItem(String variantId) async {
     if (user == null) return;
 
@@ -74,6 +101,13 @@ class CartProvider extends ChangeNotifier {
       await _saveCartToFirestore();
       notifyListeners();
     }
+  }
+
+  /// Clear all items
+  Future<void> clearCart() async {
+    _cartItems.clear();
+    await _saveCartToFirestore();
+    notifyListeners();
   }
 
   /// Load cart from Firestore
@@ -115,14 +149,7 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  /// Clear cart
-  Future<void> clearCart() async {
-    _cartItems.clear();
-    await _saveCartToFirestore();
-    notifyListeners();
-  }
-
-  /// External cart set
+  /// Replace entire cart
   void setCart(List<CartItem> items) {
     _cartItems
       ..clear()
@@ -130,7 +157,7 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Directly set quantity
+  /// Set quantity directly
   void setQty(String variantId, int qty) {
     final index = _cartItems.indexWhere((item) => item.variant == variantId);
     if (index >= 0) {
@@ -139,9 +166,7 @@ class CartProvider extends ChangeNotifier {
       } else {
         _cartItems.removeAt(index);
       }
-    } else {
-      // Optionally handle adding here if needed
+      notifyListeners();
     }
-    notifyListeners();
   }
 }
