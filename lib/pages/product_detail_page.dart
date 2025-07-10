@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../models/review.dart';
 import '../utils/cart_provider.dart';
+import '../utils/location_provider.dart';
 import '../utils/wishlist_provider.dart';
 import '../widgets/product_card.dart';
 import 'cart/cart_page.dart';
@@ -82,7 +83,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -119,7 +120,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               // Available options
               const Text(
                 "Available Options",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
               SizedBox(height: 10),
               buildVariantSelector(
@@ -135,12 +136,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               const SizedBox(height: 20),
 
               // Delivery Location
-              buildDeliveryLocationCard(
-                context: context,
-                deliveryLocation: _deliveryLocation,
-                onChangePressed: () => _showLocationOptions(context),
-              ),
-
+              buildDeliveryLocationTile(context, () {
+                _showLocationOptions(context); // or navigate to location page
+              }),
               // Delivery date & time
               buildDeliveryDateTimePicker(),
               const SizedBox(height: 20),
@@ -153,14 +151,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               buildAboutExpandableTilesSection(widget.productData),
 
               Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(1),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       "Customer Reviews",
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -276,16 +274,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          name,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
+        Text(name, style: const TextStyle(fontSize: 18)),
         const SizedBox(height: 4),
         Row(
           children: [
             Text(
               "₹$price",
-              style: const TextStyle(fontSize: 18, color: Colors.black),
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(width: 10),
             if (oldPrice != null)
@@ -433,6 +432,64 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               );
             }).toList(),
       ),
+    );
+  }
+
+  Widget buildDeliveryLocationTile(BuildContext context, VoidCallback onTap) {
+    final location =
+        context.watch<LocationProvider>().location ?? "No location";
+    final pincode = context.watch<LocationProvider>().pinCode ?? "";
+
+    final displayText =
+        (pincode.isNotEmpty && location.isNotEmpty)
+            ? "$pincode, $location"
+            : "Tap to select location";
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Deliver to: ",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: Color(0xFF77810D)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      displayText,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.black45),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -766,7 +823,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         const SizedBox(height: 16),
         const Text(
           "Select Delivery Date & Time",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: 8),
         Row(
@@ -932,7 +989,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       children: [
         const Text(
           "Add Messages",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: 10),
 
@@ -1091,10 +1148,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: 8),
             child: Text(
               "About the product",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           ...List.generate(dynamicTiles.length, (index) {
@@ -1102,7 +1159,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             final isExpanded = _expandedTileIndex == index;
 
             return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -1114,7 +1171,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     leading: Icon(tile["icon"], color: Colors.green.shade800),
                     title: Text(
                       tile["title"],
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     trailing: Icon(isExpanded ? Icons.close : Icons.add),
                     onTap: () {
@@ -1314,7 +1371,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text(
                     "You May Also Like",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

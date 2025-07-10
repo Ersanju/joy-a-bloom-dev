@@ -50,6 +50,8 @@ class _HomePageState extends State<HomePage> {
   Timer? _timer;
   Map<String, int> cartQuantities = {};
   Map<String, int> variantQuantities = {}; // key: productId_sku
+  final TextEditingController _searchController = TextEditingController();
+  bool isTyping = false;
 
   @override
   void initState() {
@@ -201,7 +203,11 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           const SizedBox(height: 5),
-          buildSearchBar(context),
+          buildSearchBar(
+            context,
+            _searchController,
+            () => _handleSearch(context),
+          ),
           const SizedBox(height: 10),
           buildCategorySection(),
           buildBannerSlider(),
@@ -476,7 +482,26 @@ class _HomePageState extends State<HomePage> {
     AccountPage(),
   ];
 
-  Widget buildSearchBar(BuildContext context) {
+  void _handleSearch(BuildContext context) {
+    final query = _searchController.text.trim();
+    if (query.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter at least 3 characters")),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SearchResultsPage(query: query)),
+    );
+  }
+
+  Widget buildSearchBar(
+    BuildContext context,
+    TextEditingController controller,
+    VoidCallback onSearch,
+  ) {
     final List<String> hints = [
       "Search for cakes...",
       "Search for gifts...",
@@ -485,63 +510,73 @@ class _HomePageState extends State<HomePage> {
       "Search for celebration items...",
     ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Stack(
-        alignment: Alignment.centerLeft,
-        children: [
-          TextField(
-            style: const TextStyle(fontSize: 16),
-            onSubmitted: (query) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SearchResultsPage(query: query),
-                ),
-              );
-            },
-            decoration: InputDecoration(
-              hintText: "",
-              prefixIcon: const Icon(Icons.search),
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 14,
-                horizontal: 48,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
+    return StatefulBuilder(
+      builder: (context, setState) {
+        bool isTyping = controller.text.isNotEmpty;
 
-          // Animated hint centered in TextField
-          Positioned.fill(
-            left: 48, // space for prefix icon
-            child: IgnorePointer(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: AnimatedTextKit(
-                  animatedTexts:
-                      hints
-                          .map(
-                            (text) => TyperAnimatedText(
-                              text,
-                              textStyle: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey.shade700, // slightly darker
-                              ),
-                              speed: const Duration(milliseconds: 60),
-                            ),
+        controller.addListener(() {
+          setState(() {});
+        });
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              TextField(
+                controller: controller,
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: "",
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 22,
+                  ),
+                  suffixIcon:
+                      isTyping
+                          ? IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: onSearch,
                           )
-                          .toList(),
-                  repeatForever: true,
-                  pause: const Duration(milliseconds: 1500),
-                  isRepeatingAnimation: true,
+                          : null,
+                  prefixIcon: isTyping ? null : const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
-            ),
+              if (!isTyping)
+                Positioned.fill(
+                  left: 48,
+                  child: IgnorePointer(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: AnimatedTextKit(
+                        animatedTexts:
+                            hints
+                                .map(
+                                  (text) => TyperAnimatedText(
+                                    text,
+                                    textStyle: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    speed: const Duration(milliseconds: 60),
+                                  ),
+                                )
+                                .toList(),
+                        repeatForever: true,
+                        pause: const Duration(milliseconds: 1500),
+                        isRepeatingAnimation: true,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -703,9 +738,6 @@ class _HomePageState extends State<HomePage> {
               final variant = (chocolateAttr?['variants'] as List?)?.first;
               if (variant == null) return const SizedBox.shrink();
 
-              final productId = productData['id'];
-              final variantId = "${productId}_${variant['sku']}";
-              final cartQty = variantQuantities[variantId] ?? 0;
               Product product = Product.fromJson(productData);
 
               return ChocolateProductCard(
