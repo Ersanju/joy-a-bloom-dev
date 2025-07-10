@@ -253,7 +253,12 @@ class _DeliveryLocationPageState extends State<DeliveryLocationPage> {
       String fetchedLocation = "${place.locality}, ${place.administrativeArea}";
 
       // Directly return to HomePage with this data
-      Navigator.pop(context, {'pin': fetchedPin, 'location': fetchedLocation});
+      Navigator.pop(context, {
+        'pin': fetchedPin,
+        'location': fetchedLocation,
+        'lat': position.latitude,
+        'lng': position.longitude,
+      });
     }
   }
 }

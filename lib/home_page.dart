@@ -15,7 +15,6 @@ import 'package:joy_a_bloom_dev/pages/home/products_by_category_grid_page.dart';
 import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
 import 'package:joy_a_bloom_dev/utils/app_util.dart';
-import 'package:joy_a_bloom_dev/utils/location_provider.dart';
 import 'package:joy_a_bloom_dev/utils/wishlist_provider.dart';
 import 'package:joy_a_bloom_dev/widgets/chocolate_product_card.dart';
 import 'package:joy_a_bloom_dev/widgets/product_card.dart';
@@ -74,10 +73,21 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _currentIndex == 0 ? buildAppBar() : null,
-      body: _pages[_currentIndex],
-      bottomNavigationBar: buildBottomNavigationBar(),
+    return WillPopScope(
+      onWillPop: () async {
+        if (_currentIndex != 0) {
+          setState(() {
+            _currentIndex = 0;
+          });
+          return false; // Prevent app from closing
+        }
+        return true; // Allow app to close from Home
+      },
+      child: Scaffold(
+        appBar: _currentIndex == 0 ? buildAppBar() : null,
+        body: _pages[_currentIndex],
+        bottomNavigationBar: buildBottomNavigationBar(),
+      ),
     );
   }
 
@@ -394,10 +404,7 @@ class _HomePageState extends State<HomePage> {
         _locationText = 'Location services disabled';
         _pinCode = '';
       });
-      context.read<LocationProvider>().update(
-        location: _locationText,
-        pinCode: '',
-      );
+      // Skip provider update in error case
       return;
     }
 
@@ -409,10 +416,6 @@ class _HomePageState extends State<HomePage> {
           _locationText = 'Permission denied';
           _pinCode = '';
         });
-        context.read<LocationProvider>().update(
-          location: _locationText,
-          pinCode: '',
-        );
         return;
       }
     }
@@ -422,10 +425,6 @@ class _HomePageState extends State<HomePage> {
         _locationText = 'Permission permanently denied';
         _pinCode = '';
       });
-      context.read<LocationProvider>().update(
-        location: _locationText,
-        pinCode: '',
-      );
       return;
     }
 
@@ -442,36 +441,25 @@ class _HomePageState extends State<HomePage> {
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
         final locationText = '${place.locality}, ${place.administrativeArea}';
-        final pinCode = '${place.postalCode}';
+        final pinCode = place.postalCode ?? '';
 
         setState(() {
           _locationText = locationText;
           _pinCode = pinCode;
         });
-
-        context.read<LocationProvider>().update(
-          location: locationText,
-          pinCode: pinCode,
-        );
       } else {
         setState(() {
           _locationText = 'Location not found';
           _pinCode = '';
         });
-        context.read<LocationProvider>().update(
-          location: _locationText,
-          pinCode: '',
-        );
+        // You may optionally skip update here
       }
     } catch (e) {
       setState(() {
         _locationText = 'Error fetching location';
         _pinCode = '';
       });
-      context.read<LocationProvider>().update(
-        location: _locationText,
-        pinCode: '',
-      );
+      // You may optionally skip update here
     }
   }
 

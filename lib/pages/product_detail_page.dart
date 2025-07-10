@@ -11,9 +11,11 @@ import '../models/review.dart';
 import '../utils/cart_provider.dart';
 import '../utils/location_provider.dart';
 import '../utils/wishlist_provider.dart';
+import '../widgets/delivery_location_section.dart';
 import '../widgets/product_card.dart';
 import 'cart/cart_page.dart';
 import 'free_message_card_page.dart';
+import 'home/delivery_location_page.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> productData;
@@ -29,7 +31,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   late PageController _pageController;
   int _selectedVariantIndex = 0;
   Timer? _autoScrollTimer;
-  String? _deliveryLocation = "Detecting location...";
   DateTime? _selectedDate;
   String? _selectedTimeSlot;
   Map<String, dynamic>? _selectedCardData;
@@ -43,7 +44,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.initState();
     _pageController = PageController();
     _startAutoScroll();
-    _getCurrentLocation();
     _reviewsFuture = fetchProductReviews(widget.productData['id']);
     _similarProductsFuture = fetchSimilarProductsByTags(
       currentProductId: widget.productData['id'],
@@ -136,9 +136,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               const SizedBox(height: 20),
 
               // Delivery Location
-              buildDeliveryLocationTile(context, () {
-                _showLocationOptions(context); // or navigate to location page
-              }),
+              DeliveryLocationSection(),
               // Delivery date & time
               buildDeliveryDateTimePicker(),
               const SizedBox(height: 20),
@@ -436,56 +434,51 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget buildDeliveryLocationTile(BuildContext context, VoidCallback onTap) {
-    final location =
-        context.watch<LocationProvider>().location ?? "No location";
-    final pincode = context.watch<LocationProvider>().pinCode ?? "";
-
-    final displayText =
-        (pincode.isNotEmpty && location.isNotEmpty)
-            ? "$pincode, $location"
-            : "Tap to select location";
+    final provider = context.watch<LocationProvider>();
+    final hasLocation = provider.location != null && provider.pinCode != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Deliver to: ",
-          style: TextStyle(
+          "Deliver to:",
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, color: Color(0xFF77810D)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      displayText,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black87,
-                      ),
+        InkWell(
+          onTap: () {
+            _showLocationOptions(context);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, color: Color(0xFF77810D)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    hasLocation
+                        ? '${provider.pinCode}, ${provider.location}'
+                        : 'Check delivery availability',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: hasLocation ? Colors.black87 : Colors.blue,
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.black45),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.black45),
+              ],
             ),
           ),
         ),
@@ -493,71 +486,72 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  // Delivery location
-  Widget buildDeliveryLocationCard({
-    required BuildContext context,
-    required String? deliveryLocation,
-    required VoidCallback onChangePressed,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  Widget buildDeliveryAvailabilityMessage(BuildContext context) {
+    final locationProvider = context.watch<LocationProvider>();
+
+    if (!locationProvider.hasCheckedAvailability) {
+      return InkWell(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DeliveryLocationPage()),
+          );
+
+          if (result != null && context.mounted) {
+            final location = result['location'];
+            final pin = result['pin'];
+            final lat = result['lat'];
+            final lng = result['lng'];
+
+            context.read<LocationProvider>().update(
+              location: location,
+              pinCode: pin,
+              latitude: lat,
+              longitude: lng,
+            );
+          }
+        },
+        child: const Text(
+          " ",
+          style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    // Only show delivery status if user checked availability
+    final double storeLat = 27.046;
+    final double storeLng = 82.231;
+    const double deliveryRadiusKm = 10.0;
+
+    final double distanceInKm =
+        Geolocator.distanceBetween(
+          storeLat,
+          storeLng,
+          locationProvider.latitude!,
+          locationProvider.longitude!,
+        ) /
+        1000;
+
+    final bool isDeliverable = distanceInKm <= deliveryRadiusKm;
+
+    return Row(
+      children: [
+        Icon(
+          isDeliverable ? Icons.check_circle : Icons.cancel,
+          color: isDeliverable ? Colors.green : Colors.red,
+          size: 18,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          isDeliverable
+              ? "Delivery available at your location"
+              : "Delivery not available at your location",
+          style: TextStyle(
+            color: isDeliverable ? Colors.green : Colors.red,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Deliver to:",
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  deliveryLocation ?? "No location selected",
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: onChangePressed,
-            label: const Text(
-              "Change",
-              style: TextStyle(color: Colors.blueAccent),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              textStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -594,19 +588,32 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
                   title: const Text("Use Current Location"),
                   onTap: () async {
-                    Navigator.pop(context);
-                    await _getCurrentLocation();
+                    Navigator.pop(context); // Close bottom sheet
+                    await _detectAndSetCurrentLocation(context);
                   },
                 ),
                 ListTile(
                   leading: const Icon(
-                    Icons.edit_location_alt,
+                    Icons.map_outlined,
                     color: Colors.deepPurple,
                   ),
-                  title: const Text("Enter Manually"),
-                  onTap: () {
+                  title: const Text("Choose location on Map"),
+                  onTap: () async {
                     Navigator.pop(context);
-                    _changeLocationManually();
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DeliveryLocationPage(),
+                      ),
+                    );
+                    if (result != null && context.mounted) {
+                      context.read<LocationProvider>().update(
+                        location: result['location'],
+                        pinCode: result['pin'],
+                        latitude: result['lat'],
+                        longitude: result['lng'],
+                      );
+                    }
                   },
                 ),
               ],
@@ -615,10 +622,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  Future<void> _getCurrentLocation() async {
+  Future<void> _detectAndSetCurrentLocation(BuildContext context) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      setState(() => _deliveryLocation = "Location services are disabled.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location services are disabled")),
+      );
       return;
     }
 
@@ -626,194 +635,47 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        setState(() => _deliveryLocation = "Location permission denied.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Location permission denied")),
+        );
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      setState(
-        () => _deliveryLocation = "Location permission permanently denied.",
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location permission permanently denied")),
       );
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
 
-    final place = placemarks.first;
-    setState(() {
-      _deliveryLocation =
-          "${place.name}, ${place.subLocality}, ${place.locality}, \n ${place.subAdministrativeArea}, ${place.postalCode}";
-    });
-  }
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final locationText = "${place.locality}, ${place.administrativeArea}";
+        final pinCode = place.postalCode ?? '';
 
-  Future<void> _changeLocationManually() async {
-    final pinCodeController = TextEditingController();
-
-    // Allowed Gonda pincodes (you can update this list)
-    final allowedPincodes = ['271001', '271002', '271003', '271304', '271305'];
-
-    // Step 1: Ask for pin code first
-    await showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Check for your location"),
-            content: TextField(
-              controller: pinCodeController,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                hintText: "Enter 6-digit postal code",
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final enteredPin = pinCodeController.text.trim();
-
-                  if (enteredPin.length != 6 ||
-                      !RegExp(r'^\d{6}$').hasMatch(enteredPin)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Enter valid 6-digit postal code"),
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (!allowedPincodes.contains(enteredPin)) {
-                    Navigator.pop(context);
-                    await showDialog(
-                      context: context,
-                      builder:
-                          (context) => AlertDialog(
-                            title: const Text("Not Operational"),
-                            content: const Text(
-                              "We are not delivering at this location yet.",
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("OK"),
-                              ),
-                            ],
-                          ),
-                    );
-                    return;
-                  }
-
-                  Navigator.pop(context); // Close pin code dialog
-
-                  // Step 2: Continue with full address form
-                  await showFullAddressForm(enteredPin);
-                },
-                child: const Text("Check"),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Future<void> showFullAddressForm(String postalCode) async {
-    final formKey = GlobalKey<FormState>();
-    final address1Controller = TextEditingController();
-    final address2Controller = TextEditingController();
-    final areaController = TextEditingController();
-    final districtController = TextEditingController(text: "Gonda");
-    final stateController = TextEditingController(text: "Uttar Pradesh");
-
-    await showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Enter Delivery Details"),
-            content: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: address1Controller,
-                      decoration: const InputDecoration(
-                        labelText: "Address Line 1",
-                      ),
-                      validator:
-                          (value) =>
-                              value == null || value.trim().isEmpty
-                                  ? 'Required'
-                                  : null,
-                    ),
-                    TextFormField(
-                      controller: address2Controller,
-                      decoration: const InputDecoration(
-                        labelText: "Address Line 2",
-                      ),
-                    ),
-                    TextFormField(
-                      controller: areaController,
-                      decoration: const InputDecoration(
-                        labelText: "Area / Locality",
-                      ),
-                      validator:
-                          (value) =>
-                              value == null || value.trim().isEmpty
-                                  ? 'Required'
-                                  : null,
-                    ),
-                    TextFormField(
-                      controller: districtController,
-                      decoration: const InputDecoration(labelText: "District"),
-                      enabled: false,
-                    ),
-                    TextFormField(
-                      controller: stateController,
-                      decoration: const InputDecoration(labelText: "State"),
-                      enabled: false,
-                    ),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: "Postal Code",
-                      ),
-                      initialValue: postalCode,
-                      enabled: false,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (formKey.currentState!.validate()) {
-                    setState(() {
-                      _deliveryLocation =
-                          "${address1Controller.text}, ${address2Controller.text}, ${areaController.text}, Gonda, Uttar Pradesh - $postalCode";
-                    });
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text("Update"),
-              ),
-            ],
-          ),
-    );
+        context.read<LocationProvider>().update(
+          location: locationText,
+          pinCode: pinCode,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+    }
   }
 
   Widget buildDeliveryDateTimePicker() {

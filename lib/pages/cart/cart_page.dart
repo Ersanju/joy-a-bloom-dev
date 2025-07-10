@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/cart_provider.dart';
+import '../../widgets/delivery_location_section.dart';
 import 'cart_bottom_bar.dart';
 import 'cart_item_widget.dart';
-import 'delivery_info.dart';
-import 'location_card.dart';
 import 'price_details.dart';
 import 'step_indicator.dart';
 
@@ -35,7 +34,8 @@ class CartPage extends StatelessWidget {
                       child: Column(
                         children: [
                           const StepIndicator(),
-                          const LocationCard(),
+
+                          // Cart Items List
                           ListView.builder(
                             itemCount: cartItems.length,
                             shrinkWrap: true,
@@ -57,7 +57,15 @@ class CartPage extends StatelessWidget {
                               );
                             },
                           ),
-                          const DeliveryInfo(),
+
+                          // Delivery Location Section
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            // Adjust as needed
+                            child: DeliveryLocationSection(),
+                          ),
+
+                          // Price Summary
                           PriceDetails(
                             productPrice: cartProvider.productPrice,
                             discount: cartProvider.discount,
@@ -68,6 +76,8 @@ class CartPage extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                  // Bottom Bar
                   CartBottomBar(total: cartProvider.total),
                 ],
               ),

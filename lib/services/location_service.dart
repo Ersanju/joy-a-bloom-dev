@@ -2,7 +2,10 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
-  static Future<(String location, String pinCode)> getCurrentLocation() async {
+  static Future<
+    ({String location, String pinCode, double latitude, double longitude})
+  >
+  getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) throw Exception("Location services are disabled.");
 
@@ -18,21 +21,23 @@ class LocationService {
       throw Exception("Location permission permanently denied.");
     }
 
-    Position position = await Geolocator.getCurrentPosition(
+    final position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
 
-    List<Placemark> placemarks = await placemarkFromCoordinates(
+    final placemarks = await placemarkFromCoordinates(
       position.latitude,
       position.longitude,
     );
 
-    if (placemarks.isEmpty) throw Exception("Unable to determine location");
+    if (placemarks.isEmpty) throw Exception("Location not found");
 
     final place = placemarks.first;
-    final location = '${place.locality}, ${place.administrativeArea}';
-    final pinCode = place.postalCode ?? "";
-
-    return (location, pinCode);
+    return (
+      location: '${place.locality}, ${place.administrativeArea}',
+      pinCode: place.postalCode ?? '',
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
   }
 }
