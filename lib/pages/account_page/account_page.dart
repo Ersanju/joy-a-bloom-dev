@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/add_address_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/saved_addresses.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/wishlist_page.dart';
 import 'package:provider/provider.dart';
 
@@ -182,17 +184,15 @@ class _AccountPageState extends State<AccountPage> {
           _AccountButton(
             icon: Icons.notifications_outlined,
             label: "Reminders",
-            onPressed:
-                isLoggedIn
-                    ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ReminderListPage(),
-                        ),
-                      );
-                    }
-                    : _redirectToLogin,
+            onPressed: () async {
+              final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
+              if (!isLoggedIn) return;
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ReminderListPage()),
+              );
+            },
           ),
           _AccountButton(
             icon: Icons.chat_bubble_outline,
@@ -202,25 +202,18 @@ class _AccountPageState extends State<AccountPage> {
           _AccountButton(
             icon: Icons.favorite_border,
             label: "Wishlist",
-            onPressed:
-                isLoggedIn
-                    ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => WishlistPage()),
-                      );
-                    }
-                    : _redirectToLogin,
+            onPressed: () async {
+              final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
+              if (!isLoggedIn) return;
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => WishlistPage()),
+              );
+            },
           ),
         ],
       ),
-    );
-  }
-
-  void _redirectToLogin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 
@@ -236,10 +229,13 @@ class _AccountPageState extends State<AccountPage> {
         _AccountTile(
           icon: Icons.person_outline,
           label: "Personal Information",
-          onTap: () {
+          onTap: () async {
+            final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
+            if (!isLoggedIn) return;
+
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const EditProfilePage()),
+              MaterialPageRoute(builder: (_) => EditProfilePage()),
             );
           },
         ),
@@ -247,7 +243,17 @@ class _AccountPageState extends State<AccountPage> {
         _AccountTile(
           icon: Icons.location_on_outlined,
           label: "Saved Addresses",
-          onTap: () {},
+          onTap: () async {
+            final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
+            if (!isLoggedIn) return;
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SavedAddressesPage()
+              ),
+            );
+          },
         ),
         _buildDivider(),
         _AccountTile(icon: Icons.help_outline, label: "FAQ's", onTap: () {}),
@@ -290,7 +296,9 @@ class _AccountPageState extends State<AccountPage> {
         _AccountTile(
           icon: Icons.feedback,
           label: 'Share app feedback',
-          onTap: () {
+          onTap: () async {
+            final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
+            if (!isLoggedIn) return;
             showModalBottomSheet(
               context: context,
               backgroundColor: Colors.white,

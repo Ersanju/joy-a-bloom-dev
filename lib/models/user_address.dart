@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserAddress {
-  final String label;
-  final String street;
-  final String area;
+  final String name;
+  final String phone;
+  final String addressType; // Home, Work, etc.
+  final String street; // Street / Locality / Area
+  final String area; // House No. / Apartment / Flat
   final String landmark;
   final String pinCode;
   final String city;
@@ -12,7 +14,9 @@ class UserAddress {
   final GeoPoint? location;
 
   UserAddress({
-    required this.label,
+    required this.name,
+    required this.phone,
+    required this.addressType,
     required this.street,
     required this.area,
     required this.landmark,
@@ -25,7 +29,9 @@ class UserAddress {
 
   factory UserAddress.fromJson(Map<String, dynamic> json) {
     return UserAddress(
-      label: json['label'] ?? '',
+      name: json['name'] ?? '',
+      phone: json['phone'] ?? '',
+      addressType: json['addressType'] ?? '',
       street: json['street'] ?? '',
       area: json['area'] ?? '',
       landmark: json['landmark'] ?? '',
@@ -39,7 +45,9 @@ class UserAddress {
 
   Map<String, dynamic> toJson() {
     return {
-      'label': label,
+      'name': name,
+      'phone': phone,
+      'addressType': addressType,
       'street': street,
       'area': area,
       'landmark': landmark,
