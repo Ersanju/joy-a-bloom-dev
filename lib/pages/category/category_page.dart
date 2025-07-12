@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../product_detail_page.dart';
 
 class CategoryPage extends StatefulWidget {
-  const CategoryPage({Key? key}) : super(key: key);
+  const CategoryPage({super.key});
 
   @override
   State<CategoryPage> createState() => _CategoryPageState();
@@ -36,7 +36,10 @@ class _CategoryPageState extends State<CategoryPage>
             .orderBy('priority')
             .get();
 
-    final data = snapshot.docs.map((doc) => doc.data()).toList();
+    final data =
+        snapshot.docs.map((doc) {
+          return {'id': doc.id, ...doc.data()};
+        }).toList();
     setState(() {
       categories = data;
       if (categories.isNotEmpty) {
@@ -242,8 +245,8 @@ class _CategoryPageState extends State<CategoryPage>
                                                             product['name'] ??
                                                             '';
                                                         final price =
-                                                            product['extraAttributes']?['cakeAttribute']?['variants']?[0]?['price'] ?? '';
-
+                                                            product['extraAttributes']?['cakeAttribute']?['variants']?[0]?['price'] ??
+                                                            '';
 
                                                         return GestureDetector(
                                                           onTap: () {
@@ -254,8 +257,8 @@ class _CategoryPageState extends State<CategoryPage>
                                                                     (
                                                                       _,
                                                                     ) => ProductDetailPage(
-                                                                      productData:
-                                                                          product,
+                                                                      productId:
+                                                                          product['id'],
                                                                     ),
                                                               ),
                                                             );

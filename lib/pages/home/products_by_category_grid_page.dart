@@ -68,38 +68,37 @@ class _ProductsByCategoryGridPageState
                           ),
                       itemBuilder: (_, index) {
                         final product = products[index];
-                        final productMap = product.toJson();
 
                         if (widget.categoryId == 'cat_chocolate') {
                           return ChocolateProductCard(
-                            productData: productMap,
+                            productData: product.toJson(),
                             onTap:
                                 () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder:
                                         (_) => ProductDetailPage(
-                                          productData: productMap,
+                                          productId: product.id,
                                         ),
                                   ),
                                 ),
-                            onVariantTap:
-                                () =>
-                                    ChocolateProductCard.showVariantsBottomSheet(
-                                      context,
-                                      Product.fromJson(productMap),
-                                    ),
+                            onVariantTap: () {
+                              ChocolateProductCard.showVariantsBottomSheet(
+                                context,
+                                product,
+                              );
+                            },
                           );
                         } else {
                           return ProductCard(
-                            productData: productMap,
+                            productData: product.toJson(),
                             onTap:
                                 () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder:
                                         (_) => ProductDetailPage(
-                                          productData: productMap,
+                                          productId: product.id,
                                         ),
                                   ),
                                 ),

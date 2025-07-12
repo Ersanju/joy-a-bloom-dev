@@ -726,7 +726,7 @@ class _HomePageState extends State<HomePage> {
               final variant = (chocolateAttr?['variants'] as List?)?.first;
               if (variant == null) return const SizedBox.shrink();
 
-              Product product = Product.fromJson(productData);
+              final product = Product.fromJson(productData);
 
               return ChocolateProductCard(
                 productData: productData,
@@ -735,7 +735,8 @@ class _HomePageState extends State<HomePage> {
                     context,
                     MaterialPageRoute(
                       builder:
-                          (_) => ChocolateProductDetailPage(product: product),
+                          (_) =>
+                              ChocolateProductDetailPage(productId: product.id),
                     ),
                   );
                 },
@@ -787,13 +788,24 @@ class _HomePageState extends State<HomePage> {
                   wishlistProvider.toggleWishlist(productId);
                 },
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ProductDetailPage(productData: productData),
-                    ),
-                  );
+                  if (productId.startsWith('sub_cat_cake')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailPage(productId: productId),
+                      ),
+                    );
+                  } else if (productId.startsWith('sub_cat_chocolate')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ChocolateProductDetailPage(
+                              productId: productId,
+                            ),
+                      ),
+                    );
+                  }
                 },
               );
             },
@@ -840,13 +852,24 @@ class _HomePageState extends State<HomePage> {
                   wishlistProvider.toggleWishlist(productId);
                 },
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ProductDetailPage(productData: productData),
-                    ),
-                  );
+                  if (productId.startsWith('sub_cat_cake')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailPage(productId: productId),
+                      ),
+                    );
+                  } else if (productId.startsWith('sub_cat_chocolate')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ChocolateProductDetailPage(
+                              productId: productId,
+                            ),
+                      ),
+                    );
+                  }
                 },
               );
             },
@@ -893,13 +916,24 @@ class _HomePageState extends State<HomePage> {
                   wishlistProvider.toggleWishlist(productId);
                 },
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ProductDetailPage(productData: productData),
-                    ),
-                  );
+                  if (productId.startsWith('sub_cat_cake')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailPage(productId: productId),
+                      ),
+                    );
+                  } else if (productId.startsWith('sub_cat_chocolate')) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ChocolateProductDetailPage(
+                              productId: productId,
+                            ),
+                      ),
+                    );
+                  }
                 },
               );
             },

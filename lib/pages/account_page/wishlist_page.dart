@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../pages/authentication/app_auth_provider.dart';
@@ -154,8 +154,9 @@ class _WishlistPageState extends State<WishlistPage> {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (context) =>
-                                      ProductDetailPage(productData: product),
+                                  (context) => ProductDetailPage(
+                                    productId: product['id'],
+                                  ),
                             ),
                           );
                         },
@@ -163,6 +164,7 @@ class _WishlistPageState extends State<WishlistPage> {
                         onWishlistToggle:
                             () => _removeFromWishlist(product['id']),
                       ),
+
                       const SizedBox(height: 4),
 
                       // Add to Cart button

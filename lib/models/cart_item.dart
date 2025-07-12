@@ -6,6 +6,10 @@ class CartItem {
   final String variant; // unique variant ID (e.g., productId_sku)
   final double price;
 
+  // ✅ New optional fields
+  final String? cakeMessage;
+  final Map<String, dynamic>? cardMessageData;
+
   CartItem({
     required this.productId,
     required this.productName,
@@ -13,6 +17,8 @@ class CartItem {
     required this.quantity,
     required this.variant,
     required this.price,
+    this.cakeMessage,
+    this.cardMessageData,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -23,6 +29,13 @@ class CartItem {
       quantity: json['quantity'],
       variant: json['variant'],
       price: (json['price'] as num).toDouble(),
+
+      // ✅ safely parse optional fields
+      cakeMessage: json['cakeMessage'],
+      cardMessageData:
+          json['cardMessageData'] != null
+              ? Map<String, dynamic>.from(json['cardMessageData'])
+              : null,
     );
   }
 
@@ -33,9 +46,15 @@ class CartItem {
     'quantity': quantity,
     'variant': variant,
     'price': price,
+    if (cakeMessage != null) 'cakeMessage': cakeMessage,
+    if (cardMessageData != null) 'cardMessageData': cardMessageData,
   };
 
-  CartItem copyWith({int? quantity}) {
+  CartItem copyWith({
+    int? quantity,
+    String? cakeMessage,
+    Map<String, dynamic>? cardMessageData,
+  }) {
     return CartItem(
       productId: productId,
       productName: productName,
@@ -43,6 +62,8 @@ class CartItem {
       quantity: quantity ?? this.quantity,
       variant: variant,
       price: price,
+      cakeMessage: cakeMessage ?? this.cakeMessage,
+      cardMessageData: cardMessageData ?? this.cardMessageData,
     );
   }
 
