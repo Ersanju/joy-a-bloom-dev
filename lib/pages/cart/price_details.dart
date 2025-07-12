@@ -22,6 +22,7 @@ class PriceDetails extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.all(10),
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(10),
         child: Column(

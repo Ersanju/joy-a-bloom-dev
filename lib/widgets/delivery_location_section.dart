@@ -20,12 +20,33 @@ class DeliveryLocationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final isLoading = context.watch<LocationProvider>().isLoading;
+
+    return Stack(
       children: [
-        _buildDeliveryLocationTile(context),
-        const SizedBox(height: 8),
-        _buildDeliveryAvailabilityMessage(context),
+        AbsorbPointer(
+          absorbing: isLoading,
+          child: Opacity(
+            opacity: isLoading ? 0.4 : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDeliveryLocationTile(context),
+                const SizedBox(height: 8),
+                _buildDeliveryAvailabilityMessage(context),
+              ],
+            ),
+          ),
+        ),
+        if (isLoading)
+          Positioned.fill(
+            child: Center(
+              child: Container(
+                color: Colors.white.withOpacity(0.6),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -195,7 +216,10 @@ class DeliveryLocationSection extends StatelessWidget {
   }
 
   Future<void> _detectAndSetCurrentLocation(BuildContext context) async {
+    final locationProvider = context.read<LocationProvider>();
     try {
+      locationProvider.setLoading(true);
+
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -210,7 +234,7 @@ class DeliveryLocationSection extends StatelessWidget {
         final locationText = "${place.locality}, ${place.administrativeArea}";
         final pinCode = place.postalCode ?? '';
 
-        context.read<LocationProvider>().update(
+        locationProvider.update(
           location: locationText,
           pinCode: pinCode,
           latitude: position.latitude,
@@ -221,6 +245,8 @@ class DeliveryLocationSection extends StatelessWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+    } finally {
+      locationProvider.setLoading(false);
     }
   }
 }

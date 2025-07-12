@@ -118,6 +118,12 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
                         vertical: 6,
                       ),
                       child: ListTile(
+                        onTap: () {
+                          Navigator.pop(
+                            context,
+                            addr,
+                          ); // return selected address to previous screen
+                        },
                         title: Text(
                           addr.name,
                           style: TextStyle(

@@ -310,7 +310,11 @@ class _AddAddressPageState extends State<AddAddressPage> {
                 ),
                 child: const Text(
                   "Save & Continue",
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],

@@ -17,6 +17,15 @@ class LocationProvider extends ChangeNotifier {
 
   bool get hasCheckedAvailability => _hasCheckedAvailability;
 
+  bool _isLoading = false;
+
+  bool get isLoading => _isLoading;
+
+  void setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
   void update({
     required String location,
     required String pinCode,

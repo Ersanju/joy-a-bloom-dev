@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 
 class CartBottomBar extends StatelessWidget {
   final int total;
+  final VoidCallback onViewPriceDetails;
+  final VoidCallback? onProceed;
 
-  const CartBottomBar({super.key, required this.total});
+  const CartBottomBar({
+    super.key,
+    required this.total,
+    required this.onViewPriceDetails,
+    this.onProceed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,21 +20,24 @@ class CartBottomBar extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "₹$total",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            child: GestureDetector(
+              onTap: onViewPriceDetails,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "₹$total",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const Text(
-                  "View price details",
-                  style: TextStyle(color: Colors.green),
-                ),
-              ],
+                  const Text(
+                    "View price details",
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ],
+              ),
             ),
           ),
           ElevatedButton(
@@ -35,9 +45,7 @@ class CartBottomBar extends StatelessWidget {
               backgroundColor: Colors.green.shade400,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            onPressed: () {
-              // TODO: Proceed to address or payment
-            },
+            onPressed: onProceed,
             child: const Text(
               "Proceed",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
