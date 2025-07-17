@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../models/product.dart';
 import '../../utils/wishlist_provider.dart';
+import '../../widgets/cake_product_card.dart';
 import '../../widgets/chocolate_product_card.dart';
-import '../../widgets/product_card.dart';
 import '../product_detail_page.dart';
 
 class ProductsByCategoryGridPage extends StatefulWidget {
@@ -56,15 +56,15 @@ class _ProductsByCategoryGridPageState
 
                   final products = snapshot.data!;
                   return Padding(
-                    padding: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(2.0),
                     child: GridView.builder(
                       itemCount: products.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 16,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.75,
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 0,
+                            childAspectRatio: 0.61,
                           ),
                       itemBuilder: (_, index) {
                         final product = products[index];
@@ -90,7 +90,7 @@ class _ProductsByCategoryGridPageState
                             },
                           );
                         } else {
-                          return ProductCard(
+                          return CakeProductCard(
                             productData: product.toJson(),
                             onTap:
                                 () => Navigator.push(
@@ -122,18 +122,56 @@ class _ProductsByCategoryGridPageState
 
   Future<List<Product>> fetchProductsByTopCategory(String categoryId) async {
     try {
+      List<Product> allProducts = [];
+
+      // 1. Try fetching by categoryId
       final snapshot =
           await FirebaseFirestore.instance
               .collection('products')
               .where('categoryId', isEqualTo: categoryId)
               .get();
 
-      List<Product> allProducts =
+      allProducts =
           snapshot.docs.map((doc) {
             final data = doc.data();
             data['id'] = doc.id;
             return Product.fromJson(data);
           }).toList();
+
+      // 2. If empty, fetch by tag (e.g., if categoryId == cat_anniversary → tag: anniversary)
+      if (allProducts.isEmpty) {
+        String? fallbackTag;
+
+        if (categoryId == 'cat_anniversary') {
+          fallbackTag = 'anniversary';
+        } else if (categoryId == 'cat_birthday') {
+          fallbackTag = 'birthday';
+        } else if (categoryId == 'cat_gift') {
+          fallbackTag = 'gift';
+        } else if (categoryId == 'cat_toy') {
+          fallbackTag = 'toy';
+        } else if (categoryId == 'cat_wedding') {
+          fallbackTag = 'wedding';
+        } else if (categoryId == 'cat_chocolate') {
+          fallbackTag = 'chocolate';
+        }
+        // Add more mappings if needed
+
+        if (fallbackTag != null) {
+          final tagSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('products')
+                  .where('tags', arrayContains: fallbackTag)
+                  .get();
+
+          allProducts =
+              tagSnapshot.docs.map((doc) {
+                final data = doc.data();
+                data['id'] = doc.id;
+                return Product.fromJson(data);
+              }).toList();
+        }
+      }
 
       allProducts.shuffle();
       return allProducts.take(30).toList();

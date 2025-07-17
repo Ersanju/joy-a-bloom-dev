@@ -16,8 +16,8 @@ import 'package:joy_a_bloom_dev/pages/home/search_results_page.dart';
 import 'package:joy_a_bloom_dev/pages/product_detail_page.dart';
 import 'package:joy_a_bloom_dev/utils/app_util.dart';
 import 'package:joy_a_bloom_dev/utils/wishlist_provider.dart';
+import 'package:joy_a_bloom_dev/widgets/cake_product_card.dart';
 import 'package:joy_a_bloom_dev/widgets/chocolate_product_card.dart';
-import 'package:joy_a_bloom_dev/widgets/product_card.dart';
 import 'package:provider/provider.dart';
 
 import 'models/category.dart';
@@ -715,7 +715,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         SizedBox(
-          height: 210,
+          height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: chocolates.length,
@@ -728,23 +728,33 @@ class _HomePageState extends State<HomePage> {
 
               final product = Product.fromJson(productData);
 
-              return ChocolateProductCard(
-                productData: productData,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) =>
-                              ChocolateProductDetailPage(productId: product.id),
-                    ),
-                  );
-                },
-                onVariantTap:
-                    () => ChocolateProductCard.showVariantsBottomSheet(
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: index == 0 ? 16 : 4, // First item has more left padding
+                  right:
+                      index == chocolates.length - 1
+                          ? 16
+                          : 8, // Last item right pad
+                ),
+                child: ChocolateProductCard(
+                  productData: productData,
+                  onTap: () {
+                    Navigator.push(
                       context,
-                      product,
-                    ),
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ChocolateProductDetailPage(
+                              productId: product.id,
+                            ),
+                      ),
+                    );
+                  },
+                  onVariantTap:
+                      () => ChocolateProductCard.showVariantsBottomSheet(
+                        context,
+                        product,
+                      ),
+                ),
               );
             },
           ),
@@ -776,7 +786,7 @@ class _HomePageState extends State<HomePage> {
               final productData = featuredProducts[index];
               final productId = productData['id'];
 
-              return ProductCard(
+              return CakeProductCard(
                 productData: productData,
                 isWishlisted: wishlistProvider.isWishlisted(productId),
                 onWishlistToggle: () async {
@@ -831,46 +841,66 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         SizedBox(
-          height: 190,
+          height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(left: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: newArrivals.length,
             itemBuilder: (context, index) {
               final productData = newArrivals[index];
               final productId = productData['id'];
+              final categoryId = productData['categoryId'];
 
-              return ProductCard(
-                productData: productData,
-                isWishlisted: wishlistProvider.isWishlisted(productId),
-                onWishlistToggle: () async {
-                  final isLoggedIn = await AppUtil.ensureLoggedInGlobal(
-                    context,
-                  );
-                  if (!isLoggedIn) return;
-
-                  wishlistProvider.toggleWishlist(productId);
-                },
-                onTap: () {
-                  if (productId.startsWith('sub_cat_cake')) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailPage(productId: productId),
-                      ),
-                    );
-                  } else if (productId.startsWith('sub_cat_chocolate')) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => ChocolateProductDetailPage(
-                              productId: productId,
+              final Widget card =
+                  categoryId == 'cat_chocolate'
+                      ? ChocolateProductCard(
+                        productData: productData,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => ChocolateProductDetailPage(
+                                    productId: productId,
+                                  ),
                             ),
-                      ),
-                    );
-                  }
-                },
+                          );
+                        },
+                        onVariantTap: () {
+                          final product = Product.fromJson(productData);
+                          ChocolateProductCard.showVariantsBottomSheet(
+                            context,
+                            product,
+                          );
+                        },
+                      )
+                      : CakeProductCard(
+                        productData: productData,
+                        isWishlisted: wishlistProvider.isWishlisted(productId),
+                        onWishlistToggle: () async {
+                          final isLoggedIn = await AppUtil.ensureLoggedInGlobal(
+                            context,
+                          );
+                          if (!isLoggedIn) return;
+                          setState(() {
+                            wishlistProvider.toggleWishlist(productId);
+                          });
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) =>
+                                      ProductDetailPage(productId: productId),
+                            ),
+                          );
+                        },
+                      );
+
+              return Padding(
+                padding: EdgeInsets.only(right: 8), // uniform spacing
+                child: SizedBox(width: 120, height: 210, child: card),
               );
             },
           ),
@@ -904,7 +934,7 @@ class _HomePageState extends State<HomePage> {
               final productData = youMayAlsoLikeProducts[index];
               final productId = productData['id'];
 
-              return ProductCard(
+              return CakeProductCard(
                 productData: productData,
                 isWishlisted: wishlistProvider.isWishlisted(productId),
                 onWishlistToggle: () async {

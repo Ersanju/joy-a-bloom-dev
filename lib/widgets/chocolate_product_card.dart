@@ -43,139 +43,151 @@ class ChocolateProductCard extends StatelessWidget {
               : "₹${(oldPrice - price).toStringAsFixed(0)} OFF";
     }
 
-    return Container(
+    return SizedBox(
       width: 120,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(128, 128, 128, 0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      height: 210, // Fix card height
       child: Stack(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: onTap,
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                      child: Image.network(
-                        imageUrl,
-                        height: 110,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    if (discountLabel != null)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: const BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              bottomRight: Radius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            discountLabel,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color.fromRGBO(128, 128, 128, 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          "₹${price.toStringAsFixed(0)}",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image
+                GestureDetector(
+                  onTap: onTap,
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
                         ),
-                        if (oldPrice != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
+                        child: Image.network(
+                          imageUrl,
+                          height: 110,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      if (discountLabel != null)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomRight: Radius.circular(8),
+                              ),
+                            ),
                             child: Text(
-                              "₹${oldPrice.toStringAsFixed(0)}",
+                              discountLabel,
                               style: const TextStyle(
+                                color: Colors.white,
                                 fontSize: 11,
-                                color: Colors.grey,
-                                decoration: TextDecoration.lineThrough,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: onVariantTap,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 6,
-                  ),
-                  color: Colors.transparent,
-                  child: Row(
-                    children: [
-                      Text(
-                        "${weightInGrams}g",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
                         ),
-                      ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.green,
-                        size: 18,
-                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-            ],
+
+                // Price & Name
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "₹${price.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (oldPrice != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Text(
+                                "₹${oldPrice.toStringAsFixed(0)}",
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ), // Push variant row to bottom
+                Spacer(),
+                // Variant Selector
+                GestureDetector(
+                  onTap: onVariantTap,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: const BoxDecoration(color: Colors.transparent),
+                    child: Row(
+                      children: [
+                        Text(
+                          "${weightInGrams}g",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(
+                          Icons.arrow_drop_down,
+                          color: Colors.green,
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 4),
+              ],
+            ),
           ),
+
+          // Cart Actions
           Positioned(
             top: 95,
             right: 1,
@@ -308,10 +320,7 @@ class ChocolateProductCard extends StatelessWidget {
                                     : 0.0;
 
                             return Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
+                              margin: const EdgeInsets.symmetric(vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(8),

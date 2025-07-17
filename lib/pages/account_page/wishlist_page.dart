@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../pages/authentication/app_auth_provider.dart';
 import '../../utils/wishlist_provider.dart';
-import '../../widgets/product_card.dart';
+import '../../widgets/cake_product_card.dart';
 import '../product_detail_page.dart';
 
 class WishlistPage extends StatefulWidget {
@@ -147,7 +147,7 @@ class _WishlistPageState extends State<WishlistPage> {
                     crossAxisAlignment:
                         CrossAxisAlignment.center, // Center align all children
                     children: [
-                      ProductCard(
+                      CakeProductCard(
                         productData: product,
                         onTap: () {
                           Navigator.push(

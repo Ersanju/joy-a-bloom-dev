@@ -64,93 +64,76 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
         title: const Text('Delivery Details'),
         leading: const BackButton(),
       ),
-      body:
-          cartItems.isEmpty
-              ? const Center(
-                child: Text(
-                  "🛒 Your cart is empty",
-                  style: TextStyle(fontSize: 20, color: Colors.grey),
-                ),
-              )
-              : Column(
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
                 children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: Column(
-                        children: [
-                          const StepIndicator(currentStep: 2),
-                          _buildDeliveryBox(context),
-                          ListView.builder(
-                            itemCount: orderedItems.length,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemBuilder: (context, index) {
-                              final item = orderedItems[index];
-                              final isCake = item.productId.contains("cake");
+                  const StepIndicator(currentStep: 2),
+                  _buildDeliveryBox(context),
+                  ListView.builder(
+                    itemCount: orderedItems.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      final item = orderedItems[index];
+                      final isCake = item.productId.contains("cake");
 
-                              return CartItemWidget(
-                                item: item,
-                                onIncrease:
-                                    () => cartProvider.addItem(
-                                      item.variant,
-                                      productId: item.productId,
-                                      productName: item.productName,
-                                      productImage: item.productImage,
-                                      price: item.price,
+                      return CartItemWidget(
+                        item: item,
+                        onIncrease:
+                            () => cartProvider.addItem(
+                              item.variant,
+                              productId: item.productId,
+                              productName: item.productName,
+                              productImage: item.productImage,
+                              price: item.price,
+                            ),
+                        onDecrease: () => cartProvider.removeItem(item.variant),
+                        onCakeMessageTap:
+                            isCake
+                                ? () => _showCakeMessageDialog(item.productId)
+                                : null,
+                        cakeMessage:
+                            isCake ? _cakeMessages[item.productId] : null,
+                        onCardMessageTap:
+                            isCake
+                                ? () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => const FreeMessageCardPage(),
                                     ),
-                                onDecrease:
-                                    () => cartProvider.removeItem(item.variant),
-                                onCakeMessageTap:
-                                    isCake
-                                        ? () => _showCakeMessageDialog(
-                                          item.productId,
-                                        )
-                                        : null,
-                                cakeMessage:
-                                    isCake
-                                        ? _cakeMessages[item.productId]
-                                        : null,
-                                onCardMessageTap:
-                                    isCake
-                                        ? () async {
-                                          final result = await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder:
-                                                  (_) =>
-                                                      const FreeMessageCardPage(),
-                                            ),
-                                          );
-                                          if (result is Map<String, dynamic>) {
-                                            setState(() {
-                                              _cardMessages[item.productId] =
-                                                  result;
-                                            });
-                                          }
-                                        }
-                                        : null,
-                                cardMessageData:
-                                    isCake
-                                        ? _cardMessages[item.productId]
-                                        : null,
-                              );
-                            },
-                          ),
-                          PriceDetails(
-                            key: _priceKey,
-                            productPrice: cartProvider.productPrice,
-                            discount: cartProvider.discount,
-                            deliveryCharge: cartProvider.deliveryCharge,
-                            convenienceCharge: cartProvider.convenienceCharge,
-                          ),
-                        ],
-                      ),
-                    ),
+                                  );
+                                  if (result is Map<String, dynamic>) {
+                                    setState(() {
+                                      _cardMessages[item.productId] = result;
+                                    });
+                                  }
+                                }
+                                : null,
+                        cardMessageData:
+                            isCake ? _cardMessages[item.productId] : null,
+                      );
+                    },
                   ),
-                  _buildBottomBar(context, cartProvider),
+                  PriceDetails(
+                    key: _priceKey,
+                    productPrice: cartProvider.productPrice,
+                    discount: cartProvider.discount,
+                    deliveryCharge: cartProvider.deliveryCharge,
+                    convenienceCharge: cartProvider.convenienceCharge,
+                  ),
                 ],
               ),
+            ),
+          ),
+          _buildBottomBar(context, cartProvider),
+        ],
+      ),
     );
   }
 
@@ -540,9 +523,6 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
   }
 
   void _goToPaymentPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const PaymentPage()),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentPage()));
   }
 }

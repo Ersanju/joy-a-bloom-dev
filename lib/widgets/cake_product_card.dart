@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-class ProductCard extends StatelessWidget {
+class CakeProductCard extends StatelessWidget {
   final Map<String, dynamic> productData;
   final VoidCallback onTap;
   final bool isWishlisted;
   final VoidCallback onWishlistToggle;
 
-  const ProductCard({
+  const CakeProductCard({
     super.key,
     required this.productData,
     required this.onTap,
