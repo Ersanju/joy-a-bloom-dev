@@ -1,6 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AppAuthProvider extends ChangeNotifier {
   User? _user;
@@ -20,8 +20,11 @@ class AppAuthProvider extends ChangeNotifier {
   }
 
   User? get user => _user;
+
   bool get isLoggedIn => _user != null;
+
   String get userId => _user?.uid ?? '';
+
   Map<String, dynamic>? get userData => _userData;
 
   Future<void> _fetchUserDataFromFirestore() async {
@@ -65,5 +68,12 @@ class AppAuthProvider extends ChangeNotifier {
   void clearUserData() {
     _userData = null;
     notifyListeners();
+  }
+
+  void updateProfileImage(String url) {
+    if (_userData != null) {
+      _userData!['profileImageUrl'] = url;
+      notifyListeners();
+    }
   }
 }

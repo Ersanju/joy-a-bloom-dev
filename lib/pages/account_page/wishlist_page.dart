@@ -76,26 +76,6 @@ class _WishlistPageState extends State<WishlistPage> {
     }
   }
 
-  Future<void> _addToCart(Map<String, dynamic> product) async {
-    final userId = context.read<AppAuthProvider>().userId;
-    final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
-
-    final cartItem = {
-      'productId': product['id'],
-      'quantity': 1,
-      'sku':
-          product['extraAttributes']?['cakeAttribute']?['defaultVariant'] ?? '',
-    };
-
-    await userRef.update({
-      'cartItems': FieldValue.arrayUnion([cartItem]),
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Added to Cart")));
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
@@ -133,13 +113,13 @@ class _WishlistPageState extends State<WishlistPage> {
               : wishlistProducts.isEmpty
               ? const Center(child: Text("Your wishlist is empty."))
               : GridView.builder(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 itemCount: wishlistProducts.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.55,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 0,
+                  childAspectRatio: 0.65,
                 ),
                 itemBuilder: (_, index) {
                   final product = wishlistProducts[index];
@@ -166,30 +146,9 @@ class _WishlistPageState extends State<WishlistPage> {
                       ),
 
                       const SizedBox(height: 4),
-
-                      // Add to Cart button
-                      SizedBox(
-                        width: 135,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.shopping_cart, size: 16),
-                          label: const Text(
-                            "Add to Cart",
-                            style: TextStyle(fontSize: 13),
-                          ),
-                          onPressed: () => _addToCart(product),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade400,
-                            minimumSize: const Size.fromHeight(34),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-
                       // Remove button
                       SizedBox(
-                        width: 135,
+                        width: 130,
                         child: OutlinedButton.icon(
                           icon: const Icon(
                             Icons.delete_outline,

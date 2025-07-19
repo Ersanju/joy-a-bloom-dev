@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joy_a_bloom_dev/models/user_order_model.dart';
 
 import 'cart_item.dart';
+import 'chat_message.dart';
 import 'user_address.dart';
 
 class AppUser {
@@ -12,6 +13,7 @@ class AppUser {
   final String? profileImageUrl;
   final DateTime? dob;
   final String? gender;
+  final List<ChatMessage> chats;
   final List<String> wishlistProductIds;
   final List<UserAddress> addresses;
   final List<UserOrder> orders;
@@ -28,6 +30,7 @@ class AppUser {
     this.profileImageUrl,
     this.dob,
     this.gender,
+    this.chats = const [],
     this.wishlistProductIds = const [],
     this.addresses = const [],
     this.orders = const [],
@@ -76,6 +79,7 @@ class AppUser {
       'profileImageUrl': profileImageUrl,
       'dob': dob != null ? Timestamp.fromDate(dob!) : null,
       'gender': gender,
+      'chats': chats.map((c) => c.toJson()).toList(),
       'wishlistProductIds': wishlistProductIds,
       'addresses': addresses.map((a) => a.toJson()).toList(),
       'orders': orders.map((o) => o.toJson()).toList(),

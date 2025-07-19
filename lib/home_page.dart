@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/account_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/edit_profile_page.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/app_auth_provider.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/login_page.dart';
 import 'package:joy_a_bloom_dev/pages/cart/cart_page.dart';
@@ -161,45 +162,55 @@ class _HomePageState extends State<HomePage> {
             child: const Text("Login / Signup"),
           )
         else
-          Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundImage:
-                          userData?['profileImageUrl'] != null &&
-                                  userData!['profileImageUrl']
-                                      .toString()
-                                      .isNotEmpty
-                              ? NetworkImage(userData['profileImageUrl'])
-                              : null,
-                      backgroundColor: Colors.grey[300],
-                      child:
-                          userData?['profileImageUrl'] == null ||
-                                  userData!['profileImageUrl']
-                                      .toString()
-                                      .isEmpty
-                              ? const Icon(Icons.person, size: 16)
-                              : null,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      userData?['name']?.split(' ').first ?? "User",
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfilePage(),
                 ),
-              ),
-              const SizedBox(width: 12),
-            ],
+              );
+            },
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundImage:
+                            userData?['profileImageUrl'] != null &&
+                                    userData!['profileImageUrl']
+                                        .toString()
+                                        .isNotEmpty
+                                ? NetworkImage(userData['profileImageUrl'])
+                                : null,
+                        backgroundColor: Colors.grey[300],
+                        child:
+                            userData?['profileImageUrl'] == null ||
+                                    userData!['profileImageUrl']
+                                        .toString()
+                                        .isEmpty
+                                ? const Icon(Icons.person, size: 16)
+                                : null,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userData?['name']?.split(' ').first ?? "User",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
           ),
       ],
     );

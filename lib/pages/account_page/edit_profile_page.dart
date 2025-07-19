@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
 import '../../utils/app_util.dart';
 import '../authentication/app_auth_provider.dart';
 
@@ -68,6 +69,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     if (url != null) {
       setState(() => _profileImageUrl = url);
+
+      // 🔥 Save image URL to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'profileImageUrl': url},
+      );
+
+      // ✅ Update local state in provider so other widgets update too
+      context.read<AppAuthProvider>().updateProfileImage(url);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile image updated")));
     }
   }
 
@@ -165,7 +178,48 @@ class _EditProfilePageState extends State<EditProfilePage> {
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  profileImageWidget,
+                  GestureDetector(
+                    onTap: () {
+                      if (_profileImageUrl != null &&
+                          _profileImageUrl!.isNotEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return Dialog(
+                              backgroundColor: Colors.black.withOpacity(0.9),
+                              insetPadding: EdgeInsets.zero,
+                              child: Stack(
+                                children: [
+                                  SizedBox.expand(
+                                    child: InteractiveViewer(
+                                      child: Image.network(
+                                        _profileImageUrl!,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 40,
+                                    right: 20,
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                      onPressed:
+                                          () => Navigator.of(context).pop(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      }
+                    },
+                    child: profileImageWidget,
+                  ),
                   Positioned(
                     right: 4,
                     bottom: 0,
@@ -316,7 +370,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   child: const Text(
                     'Save & Continue',
-                    style: TextStyle(color: Colors.deepPurple, fontSize: 18),
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ),
               ),

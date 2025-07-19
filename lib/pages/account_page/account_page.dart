@@ -3,8 +3,12 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:joy_a_bloom_dev/pages/account_page/add_address_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/become_partner_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/bulk_order_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/fyq_page.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/privacy_policy_page.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/saved_addresses.dart';
+import 'package:joy_a_bloom_dev/pages/account_page/share_feedback_page.dart';
 import 'package:joy_a_bloom_dev/pages/account_page/wishlist_page.dart';
 import 'package:provider/provider.dart';
 
@@ -16,6 +20,8 @@ import '../account_page/edit_profile_page.dart';
 import '../account_page/reminder_list_page.dart';
 import '../authentication/app_auth_provider.dart';
 import '../authentication/login_page.dart';
+import 'chat_with_us.dart';
+import 'decor_info_page.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -55,20 +61,28 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final user = context.read<AppAuthProvider>().user;
-    if (user == null) return;
+  void _showImagePreviewDialog() {
+    if (_firestoreImageUrl == null) return;
 
-    final url = await AppUtil.pickAndUploadProfileImage(
+    showDialog(
       context: context,
-      user: user,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: InteractiveViewer(
+              child: Image.network(
+                _firestoreImageUrl!,
+                fit: BoxFit.contain,
+                width: double.infinity,
+              ),
+            ),
+          ),
+        );
+      },
     );
-
-    if (url != null) {
-      setState(() {
-        _firestoreImageUrl = url;
-      });
-    }
   }
 
   @override
@@ -135,7 +149,7 @@ class _AccountPageState extends State<AccountPage> {
 
     return ListTile(
       leading: GestureDetector(
-        onTap: _pickImage,
+        onTap: _showImagePreviewDialog,
         child: CircleAvatar(
           radius: 30,
           backgroundColor: Colors.grey.shade300,
@@ -197,7 +211,12 @@ class _AccountPageState extends State<AccountPage> {
           _AccountButton(
             icon: Icons.chat_bubble_outline,
             label: "Chat With Us",
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChatWithUs()),
+              );
+            },
           ),
           _AccountButton(
             icon: Icons.favorite_border,
@@ -249,14 +268,21 @@ class _AccountPageState extends State<AccountPage> {
 
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => SavedAddressesPage()
-              ),
+              MaterialPageRoute(builder: (_) => SavedAddressesPage()),
             );
           },
         ),
         _buildDivider(),
-        _AccountTile(icon: Icons.help_outline, label: "FAQ's", onTap: () {}),
+        _AccountTile(
+          icon: Icons.help_outline,
+          label: "FAQ's",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => FYQPage()),
+            );
+          },
+        ),
         _buildDivider(),
         const _AccountTile(icon: Icons.delete_outline, label: "Delete Account"),
       ],
@@ -278,27 +304,40 @@ class _AccountPageState extends State<AccountPage> {
         _AccountTile(
           icon: Icons.celebration_outlined,
           label: "Birthday/ Wedding Decor",
-          onTap: () {},
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DecorInfoPage()),
+            );
+          },
         ),
         _buildDivider(),
         _AccountTile(
           icon: Icons.work_outline,
           label: "Corporate Gifts/ Bulk Orders",
-          onTap: () {},
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => BulkOrderPage()),
+            );
+          },
         ),
         _buildDivider(),
         _AccountTile(
           icon: Icons.home_rounded,
           label: "Become a Partner",
-          onTap: () {},
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => BecomePartnerPage()),
+            );
+          },
         ),
         _buildDivider(),
         _AccountTile(
           icon: Icons.feedback,
           label: 'Share app feedback',
-          onTap: () async {
-            final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
-            if (!isLoggedIn) return;
+          onTap: () {
             showModalBottomSheet(
               context: context,
               backgroundColor: Colors.white,
@@ -309,7 +348,7 @@ class _AccountPageState extends State<AccountPage> {
               builder:
                   (_) => const FractionallySizedBox(
                     heightFactor: 0.5,
-                    child: Center(child: Text('Feedback Form Placeholder')),
+                    child: FeedbackForm(), // defined below
                   ),
             );
           },
@@ -322,7 +361,14 @@ class _AccountPageState extends State<AccountPage> {
     return Column(
       children: [
         TextButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PrivacyPolicyPage(),
+              ),
+            );
+          },
           child: const Text(
             "Privacy Policy",
             style: TextStyle(
