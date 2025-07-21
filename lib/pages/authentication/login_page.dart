@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/signup_page.dart';
 
+import '../account_page/privacy_policy_page.dart';
 import 'otp_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -189,7 +191,8 @@ class _LoginPageState extends State<LoginPage> {
                       height: 48,
                       child: OutlinedButton.icon(
                         icon: Image.network(
-                          googleLogoUrl, // <- this should be fetched from Firestore
+                          googleLogoUrl,
+                          // <- this should be fetched from Firestore
                           height: 24,
                           errorBuilder:
                               (context, error, stackTrace) =>
@@ -205,28 +208,34 @@ class _LoginPageState extends State<LoginPage> {
 
                   const SizedBox(height: 24),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text.rich(
-                      TextSpan(
-                        text: 'By continuing, you agree to Joy-a-More’s\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style: DefaultTextStyle.of(context).style,
+                      children: [
+                        const TextSpan(
+                          text: "By continuing you agree to Joy-a-Bloom’s\n",
                         ),
-                        children: const [
-                          TextSpan(
-                            text: 'Terms & Conditions',
-                            style: TextStyle(color: Colors.blue),
+                        TextSpan(
+                          text: "Terms & Conditions & Privacy Policy",
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
                           ),
-                          TextSpan(text: ' & '),
-                          TextSpan(
-                            text: 'Privacy Policy',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ],
-                      ),
-                      textAlign: TextAlign.center,
+                          recognizer:
+                              TapGestureRecognizer()
+                                ..onTap = () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const PrivacyPolicyPage(),
+                                    ),
+                                  );
+                                },
+                        ),
+                      ],
                     ),
                   ),
 

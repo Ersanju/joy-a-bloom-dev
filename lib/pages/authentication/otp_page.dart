@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,9 @@ class _OtpPageState extends State<OtpPage> {
   );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _showOtpSentMessage = true;
+  bool _canResend = false;
+  int _cooldownSeconds = 60;
+  Timer? _resendTimer;
 
   @override
   void initState() {
@@ -43,22 +48,67 @@ class _OtpPageState extends State<OtpPage> {
   }
 
   void _sendOtp() async {
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: widget.phone,
-      verificationCompleted: (credential) async {
-        await FirebaseAuth.instance.signInWithCredential(credential);
-        _goToHome();
-      },
-      verificationFailed: (e) {
+    if (!_canResend && _verificationId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please wait before resending OTP.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _canResend = false;
+    });
+
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: widget.phone,
+        verificationCompleted: (credential) async {
+          await FirebaseAuth.instance.signInWithCredential(credential);
+          _goToHome();
+        },
+        verificationFailed: (e) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("OTP failed: ${e.message}")));
+        },
+        codeSent: (verificationId, _) {
+          setState(() {
+            _verificationId = verificationId;
+            _startCooldown();
+          });
+        },
+        codeAutoRetrievalTimeout: (_) {},
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'too-many-requests') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Too many OTP attempts. Please wait and try again later.",
+            ),
+          ),
+        );
+      } else {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("OTP failed: ${e.message}")));
-      },
-      codeSent: (verificationId, _) {
-        setState(() => _verificationId = verificationId);
-      },
-      codeAutoRetrievalTimeout: (_) {},
-    );
+        ).showSnackBar(SnackBar(content: Text("OTP error: ${e.message}")));
+      }
+    }
+  }
+
+  void _startCooldown() {
+    _cooldownSeconds = 60;
+    _resendTimer?.cancel();
+
+    _resendTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {
+        _cooldownSeconds--;
+        if (_cooldownSeconds <= 0) {
+          _canResend = true;
+          timer.cancel();
+        }
+      });
+    });
   }
 
   void _verifyOtp() async {
@@ -158,6 +208,7 @@ class _OtpPageState extends State<OtpPage> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (final controller in _otpControllers) {
       controller.dispose();
     }
@@ -266,12 +317,14 @@ class _OtpPageState extends State<OtpPage> {
                 const Text("Valid for 2 mins."),
                 const Spacer(),
                 InkWell(
-                  onTap: _sendOtp,
-                  child: const Text(
-                    "Resend OTP",
+                  onTap: _canResend ? _sendOtp : null,
+                  child: Text(
+                    _canResend
+                        ? "Resend OTP"
+                        : "Resend in $_cooldownSeconds sec",
                     style: TextStyle(
                       decoration: TextDecoration.underline,
-                      color: Colors.blue,
+                      color: _canResend ? Colors.blue : Colors.grey,
                     ),
                   ),
                 ),

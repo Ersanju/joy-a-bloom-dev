@@ -1,12 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/otp_page.dart';
 
+import '../account_page/privacy_policy_page.dart';
+
 class SignupPage extends StatefulWidget {
   final String prefilledEmail;
-  const SignupPage({required this.prefilledEmail});
+
+  const SignupPage({super.key, required this.prefilledEmail});
 
   @override
   _SignupPageState createState() => _SignupPageState();
@@ -73,7 +77,6 @@ class _SignupPageState extends State<SignupPage> {
 
           final bannerUrl = snapshot.data!['bannerUrl']!;
           final logoUrl = snapshot.data!['logoUrl']!;
-          final googleLogoUrl = snapshot.data!['googleLogoUrl']!;
 
           return SingleChildScrollView(
             child: Column(
@@ -87,7 +90,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       child: Image.network(
                         bannerUrl,
-                        height: 200,
+                        height: 300,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
@@ -111,9 +114,9 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 50),
+                const SizedBox(height: 60),
                 const Text(
-                  'Welcome To Joy-a-More!',
+                  'Welcome To Joy-a-Bloom!',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 Text(
@@ -194,31 +197,37 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      const Text("or Login with"),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: OutlinedButton.icon(
-                          icon: Image.network(
-                            googleLogoUrl,
-                            height: 24,
-                            errorBuilder:
-                                (context, error, stackTrace) =>
-                                    const Icon(Icons.error),
-                          ),
-                          label: const Text("Login with Google"),
-                          onPressed: () {
-                            // Firebase Auth
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'By continuing you agree to Joy-a-More’s\nTerms & Conditions & Privacy Policy',
+                      const SizedBox(height: 40),
+                      RichText(
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        text: TextSpan(
+                          style: DefaultTextStyle.of(context).style,
+                          children: [
+                            const TextSpan(
+                              text:
+                                  "By continuing you agree to Joy-a-Bloom’s\n",
+                            ),
+                            TextSpan(
+                              text: "Terms & Conditions & Privacy Policy",
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer:
+                                  TapGestureRecognizer()
+                                    ..onTap = () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) =>
+                                                  const PrivacyPolicyPage(),
+                                        ),
+                                      );
+                                    },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
