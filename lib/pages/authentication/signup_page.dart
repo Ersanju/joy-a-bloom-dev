@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/gestures.dart';
@@ -107,7 +108,9 @@ class _SignupPageState extends State<SignupPage> {
                           child: CircleAvatar(
                             radius: 45,
                             backgroundColor: Colors.white,
-                            backgroundImage: NetworkImage(logoUrl),
+                            backgroundImage: CachedNetworkImageProvider(
+                              logoUrl,
+                            ),
                           ),
                         ),
                       ),

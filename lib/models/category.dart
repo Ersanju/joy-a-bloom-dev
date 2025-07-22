@@ -18,22 +18,22 @@ class Category {
     required this.description,
     required this.priority,
     required this.active,
-    required this.createdAt
+    required this.createdAt,
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-        id: json['id'] ?? '',
-        name: json['name'] ?? '',
-        categoryId: json['categoryId'] ?? '',
-        imageUrl: json['imageUrl'] ?? '',
-        description: json['description'] ?? '',
-        priority: json['priority'] ?? 0,
-        active: json['active'] ?? true,
-      createdAt: json['createdAt'] != null
-          ? (json['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      categoryId: json['categoryId'] ?? '',
+      imageUrl: json['imageUrl'] ?? '',
+      description: json['description'] ?? '',
+      priority: json['priority'] ?? 0,
+      active: json['active'] ?? true,
+      createdAt:
+          json['createdAt'] != null
+              ? (json['createdAt'] as Timestamp).toDate()
+              : DateTime.now(),
     );
   }
 
@@ -46,7 +46,23 @@ class Category {
       'description': description,
       'priority': priority,
       'active': active,
-      'createdAt': createdAt.toIso8601String()
+      'createdAt': createdAt.toIso8601String(),
     };
+  }
+
+  factory Category.fromMap(String id, Map<String, dynamic> json) {
+    return Category(
+      id: id,
+      name: json['name'] ?? '',
+      categoryId: json['categoryId'],
+      imageUrl: json['imageUrl'] ?? '',
+      description: json['description'] ?? '',
+      priority: json['priority'] ?? 0,
+      active: json['active'] ?? true,
+      createdAt:
+          json['createdAt'] != null
+              ? (json['createdAt'] as Timestamp).toDate()
+              : DateTime.now(),
+    );
   }
 }

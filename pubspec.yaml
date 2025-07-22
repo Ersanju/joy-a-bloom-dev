@@ -50,6 +50,7 @@ dependencies:
   provider: ^6.1.5
   flutter_launcher_icons: ^0.14.4
   firebase_app_check: ^0.3.2+9
+  cached_network_image: ^3.4.1
 
 flutter_icons:
   android: true

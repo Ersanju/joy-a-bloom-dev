@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -45,9 +46,9 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> appReviews = [];
   String _locationText = 'Fetching location...';
   String _pinCode = '';
+  Timer? _timer;
 
   bool isLoadingBanners = true;
-  Timer? _timer;
   Map<String, int> cartQuantities = {};
   Map<String, int> variantQuantities = {}; // key: productId_sku
   final TextEditingController _searchController = TextEditingController();
@@ -56,20 +57,26 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadAllHomeData();
-    _fetchLocation();
+    _loadInitialData();
     _fetchBannerImages();
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_pageController.hasClients) {
+      if (_pageController.hasClients && bannerImages.isNotEmpty) {
         final nextPage =
             (_pageController.page!.round() + 1) % bannerImages.length;
         _pageController.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 100),
           curve: Curves.easeInOut,
         );
       }
     });
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => isHomeLoading = true);
+    await Future.wait([_loadAllHomeData(), _fetchLocation()]);
+    _preCacheHomeImages();
+    setState(() => isHomeLoading = false);
   }
 
   @override
@@ -185,7 +192,9 @@ class _HomePageState extends State<HomePage> {
                                     userData!['profileImageUrl']
                                         .toString()
                                         .isNotEmpty
-                                ? NetworkImage(userData['profileImageUrl'])
+                                ? CachedNetworkImageProvider(
+                                  userData['profileImageUrl'],
+                                )
                                 : null,
                         backgroundColor: Colors.grey[300],
                         child:
@@ -272,75 +281,48 @@ class _HomePageState extends State<HomePage> {
     try {
       setState(() => isHomeLoading = true);
 
-      // 1. Categories (null and empty categoryId)
-      final nullSnapshot =
-          await FirebaseFirestore.instance
-              .collection('categories')
+      final categoryQuery = FirebaseFirestore.instance.collection('categories');
+      final nullSnapshotFuture =
+          categoryQuery
               .where('active', isEqualTo: true)
               .where('categoryId', isNull: true)
               .orderBy('priority')
               .get();
-
-      final emptySnapshot =
-          await FirebaseFirestore.instance
-              .collection('categories')
+      final emptySnapshotFuture =
+          categoryQuery
               .where('active', isEqualTo: true)
               .where('categoryId', isEqualTo: '')
               .orderBy('priority')
               .get();
 
-      final allDocs = [...nullSnapshot.docs, ...emptySnapshot.docs];
-      final seen = <String>{};
-
-      categories =
-          allDocs.where((doc) => seen.add(doc.id)).map((doc) {
-            final data = doc.data();
-            return Category(
-              id: doc.id,
-              name: data['name'],
-              categoryId: data['categoryId'],
-              imageUrl: data['imageUrl'],
-              description: data['description'],
-              priority: data['priority'],
-              active: data['active'],
-              createdAt: (data['createdAt'] as Timestamp).toDate(),
-            );
-          }).toList();
-
-      // 2. Other Firestore collections
       final bannerFuture =
           FirebaseFirestore.instance
               .collection('banners')
               .where('active', isEqualTo: true)
               .get();
-
       final featuredFuture =
           FirebaseFirestore.instance
               .collection('products')
               .where('tags', arrayContains: 'featured')
               .get();
-
       final chocolatesFuture =
           FirebaseFirestore.instance
               .collection('products')
               .where('categoryId', isEqualTo: 'cat_chocolate')
               .limit(10)
               .get();
-
       final newArrivalsFuture =
           FirebaseFirestore.instance
               .collection('products')
               .orderBy('createdAt', descending: true)
               .limit(10)
               .get();
-
       final youMayAlsoLikeFuture =
           FirebaseFirestore.instance
               .collection('products')
               .where('tags', arrayContainsAny: ['recommended', 'trending'])
               .limit(10)
               .get();
-
       final appReviewsFuture =
           FirebaseFirestore.instance
               .collection('app_reviews')
@@ -348,8 +330,9 @@ class _HomePageState extends State<HomePage> {
               .limit(5)
               .get();
 
-      // 3. Run all futures in parallel
       final results = await Future.wait([
+        nullSnapshotFuture,
+        emptySnapshotFuture,
         bannerFuture,
         featuredFuture,
         chocolatesFuture,
@@ -358,50 +341,48 @@ class _HomePageState extends State<HomePage> {
         appReviewsFuture,
       ]);
 
-      final bannerSnapshot = results[0] as QuerySnapshot;
-      final featuredSnapshot = results[1] as QuerySnapshot;
-      final chocolatesSnapshot = results[2] as QuerySnapshot;
-      final newArrivalsSnapshot = results[3] as QuerySnapshot;
-      final youMayAlsoLikeSnapshot = results[4] as QuerySnapshot;
-      final appReviewsSnapshot = results[5] as QuerySnapshot;
+      final allDocs = [...results[0].docs, ...results[1].docs];
+      final seen = <String>{};
+      final fetchedCategories =
+          allDocs
+              .where((doc) => seen.add(doc.id))
+              .map((doc) => Category.fromMap(doc.id, doc.data()))
+              .toList();
 
-      // 4. Update state with all fetched data
       setState(() {
+        categories = fetchedCategories;
         bannerImages =
-            bannerSnapshot.docs
-                .map((doc) => doc['imageUrl'] as String)
-                .toList();
-
-        featuredProducts =
-            featuredSnapshot.docs
-                .map((doc) => doc.data() as Map<String, dynamic>)
-                .toList();
-
-        chocolates =
-            chocolatesSnapshot.docs
-                .map((doc) => doc.data() as Map<String, dynamic>)
-                .toList();
-
-        newArrivals =
-            newArrivalsSnapshot.docs
-                .map((doc) => doc.data() as Map<String, dynamic>)
-                .toList();
-
-        youMayAlsoLikeProducts =
-            youMayAlsoLikeSnapshot.docs
-                .map((doc) => doc.data() as Map<String, dynamic>)
-                .toList();
-
-        appReviews =
-            appReviewsSnapshot.docs
-                .map((doc) => doc.data() as Map<String, dynamic>)
-                .toList();
-
+            results[2].docs.map((d) => d['imageUrl'] as String).toList();
+        featuredProducts = results[3].docs.map((d) => d.data()).toList();
         isHomeLoading = false;
+        chocolates = results[4].docs.map((d) => d.data()).toList();
+        newArrivals = results[5].docs.map((d) => d.data()).toList();
+        youMayAlsoLikeProducts = results[6].docs.map((d) => d.data()).toList();
+        appReviews = results[7].docs.map((d) => d.data()).toList();
       });
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      _preCacheHomeImages(); // precache happens after smooth delay
     } catch (e) {
       debugPrint("Error loading homepage data: $e");
-      setState(() => isHomeLoading = false); // fallback: show partial UI
+      setState(() => isHomeLoading = false);
+    }
+  }
+
+  void _preCacheHomeImages() {
+    final context = this.context;
+
+    final allImageUrls =
+        [
+          ...bannerImages,
+          ...featuredProducts.map((p) => p['imageUrl'] as String? ?? ''),
+          ...chocolates.map((p) => p['imageUrl'] as String? ?? ''),
+          ...newArrivals.map((p) => p['imageUrl'] as String? ?? ''),
+          ...youMayAlsoLikeProducts.map((p) => p['imageUrl'] as String? ?? ''),
+        ].where((url) => url.isNotEmpty).toSet(); // remove duplicates & empties
+
+    for (final url in allImageUrls) {
+      precacheImage(CachedNetworkImageProvider(url), context);
     }
   }
 
@@ -471,6 +452,31 @@ class _HomePageState extends State<HomePage> {
         _pinCode = '';
       });
       // You may optionally skip update here
+    }
+  }
+
+  Future<void> _fetchBannerImages() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('banners').get();
+
+      final fetchedImages =
+          snapshot.docs.map((doc) => doc['imageUrl'] as String).toList();
+
+      setState(() {
+        bannerImages = fetchedImages;
+        isLoadingBanners = false;
+      });
+
+      // Precache images after they're set
+      for (var url in bannerImages) {
+        precacheImage(CachedNetworkImageProvider(url), context);
+      }
+    } catch (e) {
+      debugPrint("Error loading banners: $e");
+      setState(() {
+        isLoadingBanners = false;
+      });
     }
   }
 
@@ -639,7 +645,7 @@ class _HomePageState extends State<HomePage> {
             tag: category.id,
             child: CircleAvatar(
               radius: 33,
-              backgroundImage: NetworkImage(category.imageUrl),
+              backgroundImage: CachedNetworkImageProvider(category.imageUrl),
               backgroundColor: Colors.grey[200],
             ),
           ),
@@ -654,27 +660,6 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
-  }
-
-  Future<void> _fetchBannerImages() async {
-    try {
-      final snapshot =
-          await FirebaseFirestore.instance.collection('banners').get();
-
-      final fetchedImages =
-          snapshot.docs.map((doc) => doc['imageUrl'] as String).toList();
-
-      setState(() {
-        bannerImages = fetchedImages;
-        isLoadingBanners = false;
-      });
-    } catch (e) {
-      debugPrint("Error loading banners: $e");
-      setState(() {
-        bannerImages = [];
-        isLoadingBanners = false;
-      });
-    }
   }
 
   Widget buildBannerSlider() {
@@ -704,7 +689,7 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               image: DecorationImage(
-                image: NetworkImage(bannerImages[index]),
+                image: CachedNetworkImageProvider(bannerImages[index]),
                 fit: BoxFit.cover,
               ),
             ),

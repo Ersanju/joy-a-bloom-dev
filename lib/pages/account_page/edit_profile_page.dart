@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -152,7 +153,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _profileImageUrl != null && _profileImageUrl!.isNotEmpty
             ? CircleAvatar(
               radius: 50,
-              backgroundImage: NetworkImage(_profileImageUrl!),
+              backgroundImage: CachedNetworkImageProvider(_profileImageUrl!),
             )
             : const CircleAvatar(
               radius: 50,

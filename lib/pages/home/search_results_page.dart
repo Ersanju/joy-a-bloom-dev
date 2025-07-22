@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:string_similarity/string_similarity.dart'; // <-- add this package in pubspec.yaml
@@ -126,7 +127,9 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   final product = _results[index];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundImage: NetworkImage(product['imageUrl'] ?? ''),
+                      backgroundImage: CachedNetworkImageProvider(
+                        product['imageUrl'] ?? '',
+                      ),
                     ),
                     title: Text(product['name'] ?? ''),
                     subtitle: Text("₹${product['price'] ?? 'N/A'}"),
