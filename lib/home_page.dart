@@ -24,7 +24,6 @@ import 'package:provider/provider.dart';
 
 import 'models/category.dart';
 import 'models/product.dart';
-import 'pages/home/delivery_location_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -111,49 +110,28 @@ class _HomePageState extends State<HomePage> {
       elevation: 0,
       title: Row(
         children: [
-          InkWell(
-            onTap: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DeliveryLocationPage(),
+          const Icon(Icons.location_on, color: Colors.black),
+          const SizedBox(width: 5),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _locationText,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
-              );
-
-              if (result != null && mounted) {
-                setState(() {
-                  _pinCode = result['pin'] ?? '';
-                  _locationText = result['location'] ?? '';
-                });
-              }
-            },
-            child: Row(
-              children: [
-                const Icon(Icons.location_on, color: Colors.black),
-                const SizedBox(width: 5),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _locationText,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      _pinCode,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+              ),
+              Text(
+                _pinCode,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),

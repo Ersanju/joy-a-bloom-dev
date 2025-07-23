@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class DeliveryLocationPage extends StatefulWidget {
   const DeliveryLocationPage({super.key});
@@ -11,198 +12,94 @@ class DeliveryLocationPage extends StatefulWidget {
 }
 
 class _DeliveryLocationPageState extends State<DeliveryLocationPage> {
-  final _pinController = TextEditingController();
-  final _locationController = TextEditingController();
-
-  bool _isPinValid = false;
-  String? _errorMessage;
-
-  // Sample list of serviceable pincodes
-  final List<String> serviceablePins = [
-    '110001',
-    '271001',
-    '400001',
-    '560001',
-    '122001',
-  ];
-
-  final String _selectedCountry = 'India';
-
-  void _validatePin() {
-    String enteredPin = _pinController.text.trim();
-
-    if (enteredPin.length != 6) {
-      setState(() {
-        _isPinValid = false;
-        _errorMessage = "Please enter a valid 6-digit pin code.";
-      });
-      return;
-    }
-
-    if (serviceablePins.contains(enteredPin)) {
-      setState(() {
-        _isPinValid = true;
-        _errorMessage = null;
-      });
-    } else {
-      setState(() {
-        _isPinValid = false;
-        _errorMessage = "Sorry! We don't deliver to this pin code yet.";
-      });
-    }
-  }
-
-  void _saveLocation() {
-    String pin = _pinController.text.trim();
-    String location = _locationController.text.trim();
-
-    if (pin.isNotEmpty && location.isNotEmpty) {
-      Navigator.pop(context, {'pin': pin, 'location': location});
-    }
-  }
+  late GoogleMapController _mapController;
+  LatLng _center = const LatLng(27.046192, 82.2315); // Default to Mankapur
+  String _address = "Fetching address...";
+  String _pinCode = "";
+  bool _loading = true;
 
   @override
-  void dispose() {
-    _pinController.dispose();
-    _locationController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _checkPermissionAndInit();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F7),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF9F9F7),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Delivery Location",
-          style: TextStyle(color: Colors.black),
-        ),
-      ),
-      body: SingleChildScrollView(
-        // <-- This allows scrolling when keyboard opens
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                ),
-              ],
+      appBar: AppBar(title: const Text("Choose Delivery Location")),
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: _center, zoom: 16),
+            onMapCreated: (controller) => _mapController = controller,
+            onCameraMove: _onCameraMove,
+            onCameraIdle: _onCameraIdle,
+          ),
+
+          // 📍 Center Pin Icon with legacy Material style
+          const Center(
+            child: Icon(
+              Icons.location_pin, // Sharp pin icon
+              size: 40,
+              color: Colors.red,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.location_on_outlined),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Let's Personalize Your Experience!",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Find the perfect gifts for you or your loved ones - it's like magic!",
-                  style: TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  value: _selectedCountry,
-                  items: [
-                    DropdownMenuItem(
-                      value: 'India',
-                      child: Row(
-                        children: const [
-                          Text('🇮🇳  '),
-                          SizedBox(width: 4),
-                          Text('India'),
-                        ],
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {},
-                  decoration: InputDecoration(
-                    labelText: 'Country',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
+          ),
 
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _useCurrentLocation,
-                  icon: const Icon(Icons.my_location),
-                  label: const Text("Use Current Location"),
-                ),
-                const SizedBox(height: 20),
+          // Address Card
+          Positioned(
+            top: 10,
+            left: 20,
+            right: 20,
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 6,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child:
+                    _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Selected Address",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(_address),
+                            if (_pinCode.isNotEmpty)
+                              Text(
+                                "Pin Code: $_pinCode",
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                          ],
+                        ),
+              ),
+            ),
+          ),
+        ],
+      ),
 
-                TextFormField(
-                  controller: _pinController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(6),
-                  ],
-                  decoration: InputDecoration(
-                    labelText: "Enter Pin Code",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    counterText: "",
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _validatePin,
-                    child: const Text("Check Availability"),
-                  ),
-                ),
-                if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ),
-                if (_isPinValid) ...[
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _locationController,
-                    decoration: InputDecoration(
-                      labelText: "Enter your location (City/Area)",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _saveLocation,
-                    child: const Text("Save Location"),
-                  ),
-                ],
-              ],
+      // Confirm Button
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ElevatedButton.icon(
+            onPressed: _loading ? null : _confirmLocation,
+            icon: const Icon(Icons.check, color: Colors.white),
+            label: const Text(
+              "Confirm Location",
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(fontSize: 16),
             ),
           ),
         ),
@@ -210,55 +107,66 @@ class _DeliveryLocationPageState extends State<DeliveryLocationPage> {
     );
   }
 
-  Future<void> _useCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Location services are disabled")),
+  Future<void> _checkPermissionAndInit() async {
+    final status = await Permission.locationWhenInUse.request();
+    if (status.isGranted) {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
-      return;
-    }
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location permission denied")),
-        );
-        return;
-      }
-    }
+      setState(() {
+        _center = LatLng(position.latitude, position.longitude);
+      });
 
-    if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Location permission permanently denied")),
-      );
-      return;
-    }
+      _mapController.animateCamera(CameraUpdate.newLatLng(_center));
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
-
-    if (placemarks.isNotEmpty) {
-      Placemark place = placemarks.first;
-
-      String fetchedPin = place.postalCode ?? '';
-      String fetchedLocation = "${place.locality}, ${place.administrativeArea}";
-
-      // Directly return to HomePage with this data
-      Navigator.pop(context, {
-        'pin': fetchedPin,
-        'location': fetchedLocation,
-        'lat': position.latitude,
-        'lng': position.longitude,
+      await _updateAddress(_center);
+    } else {
+      setState(() {
+        _address = "Location permission denied.";
+        _loading = false;
       });
     }
+  }
+
+  Future<void> _updateAddress(LatLng position) async {
+    setState(() => _loading = true);
+    try {
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final address = "${place.locality}, ${place.administrativeArea}";
+        setState(() {
+          _address = address;
+          _pinCode = place.postalCode ?? '';
+        });
+      } else {
+        setState(() => _address = "Address not found");
+      }
+    } catch (e) {
+      setState(() => _address = "Error retrieving address");
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _onCameraMove(CameraPosition position) {
+    _center = position.target;
+  }
+
+  void _onCameraIdle() {
+    _updateAddress(_center);
+  }
+
+  void _confirmLocation() {
+    Navigator.pop(context, {
+      'location': _address,
+      'pin': _pinCode,
+      'lat': _center.latitude,
+      'lng': _center.longitude,
+    });
   }
 }

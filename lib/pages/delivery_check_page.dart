@@ -46,7 +46,7 @@ class _DeliveryCheckPageState extends State<DeliveryCheckPage> {
         Navigator.pop(context, {'location': location, 'pin': pin});
       } else {
         setState(
-          () => _message = "Sorry! Delivery is only available within 10 km.",
+              () => _message = "Sorry! Delivery is only available within 10 km.",
         );
       }
     } catch (e) {
@@ -75,7 +75,7 @@ class _DeliveryCheckPageState extends State<DeliveryCheckPage> {
                 _message!,
                 style: TextStyle(
                   color:
-                      _message!.startsWith("Sorry") ? Colors.red : Colors.green,
+                  _message!.startsWith("Sorry") ? Colors.red : Colors.green,
                   fontSize: 16,
                 ),
               ),

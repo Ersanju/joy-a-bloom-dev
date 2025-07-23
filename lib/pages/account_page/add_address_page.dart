@@ -4,6 +4,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../models/user_address.dart';
+import '../home/delivery_location_page.dart';
 
 class AddAddressPage extends StatefulWidget {
   final void Function(UserAddress) onSave;
@@ -26,6 +27,7 @@ class _AddAddressPageState extends State<AddAddressPage> {
   final _pincodeController = TextEditingController();
 
   GeoPoint? _location;
+  String? _locality;
   String? _city;
   String? _state;
   String? _country;
@@ -47,58 +49,6 @@ class _AddAddressPageState extends State<AddAddressPage> {
     landmarkController.dispose();
     _pincodeController.dispose();
     super.dispose();
-  }
-
-  Future<void> _useCurrentLocation() async {
-    setState(() => _isLocating = true);
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission denied')),
-        );
-        setState(() => _isLocating = false);
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition();
-      _location = GeoPoint(position.latitude, position.longitude);
-
-      final placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        setState(() {
-          _pincodeController.text = place.postalCode ?? '';
-          _city = place.subAdministrativeArea ?? '';
-          _state = place.administrativeArea ?? '';
-          _country = place.country ?? '';
-        });
-
-        final distance = Geolocator.distanceBetween(
-          position.latitude,
-          position.longitude,
-          deliveryCenter.latitude,
-          deliveryCenter.longitude,
-        );
-
-        setState(() {
-          _isDeliverable = distance <= maxDeliveryDistance;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
-    }
-    setState(() => _isLocating = false);
   }
 
   @override
@@ -199,32 +149,51 @@ class _AddAddressPageState extends State<AddAddressPage> {
               ),
               const SizedBox(height: 10),
 
-              if (_city != null || _state != null)
+              if (_city != null)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text("Place: $_locality"),
                     Text("District: $_city"),
-                    Text("State: $_state"),
-                    Text("Country: $_country"),
                     const SizedBox(height: 10),
                   ],
                 ),
 
-              ElevatedButton.icon(
-                onPressed: _isLocating ? null : _useCurrentLocation,
-                icon:
-                    _isLocating
-                        ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Icons.my_location),
-                label: const Text("Use Current Location"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isLocating ? null : _useCurrentLocation,
+                      icon:
+                          _isLocating
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.my_location),
+                      label: const Text("Use Current Location"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _chooseLocationOnMap,
+                      icon: const Icon(Icons.map_outlined),
+                      label: const Text("Choose on Map"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               if (_location != null)
@@ -322,5 +291,105 @@ class _AddAddressPageState extends State<AddAddressPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() => _isLocating = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission denied')),
+        );
+        setState(() => _isLocating = false);
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      _location = GeoPoint(position.latitude, position.longitude);
+
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        setState(() {
+          _pincodeController.text = place.postalCode ?? '';
+          _locality = place.locality ?? '';
+          _city = place.subAdministrativeArea ?? '';
+          _state = place.administrativeArea ?? '';
+          _country = place.country ?? '';
+        });
+
+        final distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          deliveryCenter.latitude,
+          deliveryCenter.longitude,
+        );
+
+        setState(() {
+          _isDeliverable = distance <= maxDeliveryDistance;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
+    }
+    setState(() => _isLocating = false);
+  }
+
+  Future<void> _chooseLocationOnMap() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DeliveryLocationPage()),
+    );
+
+    if (result != null) {
+      final lat = result['lat'] as double;
+      final lng = result['lng'] as double;
+      final pin = result['pin'] as String?;
+
+      setState(() {
+        _location = GeoPoint(lat, lng);
+        _pincodeController.text = pin ?? '';
+      });
+
+      final distance = Geolocator.distanceBetween(
+        lat,
+        lng,
+        deliveryCenter.latitude,
+        deliveryCenter.longitude,
+      );
+
+      setState(() {
+        _isDeliverable = distance <= maxDeliveryDistance;
+        _locality = null;
+        _city = null;
+        _state = null;
+        _country = null;
+      });
+
+      // Optionally update city/state/country too using reverse geocoding
+      try {
+        final placemarks = await placemarkFromCoordinates(lat, lng);
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          setState(() {
+            _locality = place.locality ?? '';
+            _city = place.subAdministrativeArea ?? '';
+            _state = place.administrativeArea ?? '';
+            _country = place.country ?? '';
+          });
+        }
+      } catch (_) {}
+    }
   }
 }

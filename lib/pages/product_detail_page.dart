@@ -6,7 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../models/product.dart';
 import '../models/review.dart';
+import '../utils/app_util.dart';
 import '../utils/cart_provider.dart';
+import '../utils/location_provider.dart';
 import '../utils/wishlist_provider.dart';
 import '../widgets/cake_product_card.dart';
 import '../widgets/delivery_location_section.dart';
@@ -183,10 +185,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
             ),
           ),
-          bottomNavigationBar: buildBottomAddToCartButton(
-            context,
-            productData,
-            selectedVariant,
+          bottomNavigationBar: SafeArea(
+            child: buildBottomAddToCartButton(
+              context,
+              productData,
+              selectedVariant,
+            ),
           ),
         );
       },
@@ -558,8 +562,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           backgroundColor: isInCart ? Colors.orange : Colors.green.shade700,
           padding: const EdgeInsets.symmetric(vertical: 14),
         ),
-        onPressed: () {
+        onPressed: () async {
+          final locationProvider = context.read<LocationProvider>();
+
+          // 🛑 Ensure location is checked and available
+          if (!locationProvider.hasCheckedAvailability ||
+              locationProvider.latitude == null ||
+              locationProvider.longitude == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Please check delivery availability first."),
+              ),
+            );
+            return;
+          }
+          final isLoggedIn = await AppUtil.ensureLoggedInGlobal(context);
+          if (!isLoggedIn) return;
+          // ✅ Proceed with cart logic
           if (isInCart) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const CartPage()),
