@@ -89,18 +89,22 @@ class CartProvider extends ChangeNotifier {
     if (user == null) return;
 
     final index = _cartItems.indexWhere((item) => item.variant == variantId);
-    if (index >= 0) {
-      if (_cartItems[index].quantity > 1) {
-        _cartItems[index] = _cartItems[index].copyWith(
-          quantity: _cartItems[index].quantity - 1,
-        );
-      } else {
-        _cartItems.removeAt(index);
-      }
+    if (index == -1) return;
 
-      await _saveCartToFirestore();
-      notifyListeners();
+    final currentItem = _cartItems[index];
+
+    if (currentItem.quantity <= 1) {
+      // 🗑️ Actually remove it when quantity is 1
+      _cartItems.removeAt(index);
+    } else {
+      // ➖ Just decrease
+      _cartItems[index] = currentItem.copyWith(
+        quantity: currentItem.quantity - 1,
+      );
     }
+
+    await _saveCartToFirestore();
+    notifyListeners();
   }
 
   /// Clear all items

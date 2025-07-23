@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/product.dart';
+import '../../utils/cart_provider.dart';
+import '../../widgets/chocolate_product_card.dart';
+import '../cart/cart_page.dart';
 
 class ChocolateProductDetailPage extends StatefulWidget {
   final String productId;
@@ -21,10 +25,25 @@ class _ChocolateProductDetailPageState
   bool isLoading = true;
   bool isLoadingSimilar = true;
 
+  bool isInCart = false;
+
   @override
   void initState() {
     super.initState();
     fetchProduct();
+  }
+
+  void _initializeCartStatus() {
+    final variants = product!.extraAttributes?.chocolateAttribute?.variants;
+    if (variants == null || selectedPackIndex >= variants.length) return;
+
+    final sku = variants[selectedPackIndex].sku;
+    final variantId = "${product!.id}_$sku";
+
+    final cartProvider = context.read<CartProvider>();
+    setState(() {
+      isInCart = cartProvider.getQty(variantId) > 0;
+    });
   }
 
   Future<void> fetchProduct() async {
@@ -38,6 +57,10 @@ class _ChocolateProductDetailPageState
       if (doc.exists) {
         product = Product.fromJson(doc.data()!);
         setState(() => isLoading = false);
+
+        // ✅ Now call this safely, after product is loaded
+        _initializeCartStatus();
+
         fetchSimilarProducts(product!.categoryId);
       } else {
         setState(() => isLoading = false);
@@ -77,7 +100,6 @@ class _ChocolateProductDetailPageState
     }
 
     final variants = product!.extraAttributes?.chocolateAttribute?.variants;
-    final selectedVariant = variants?[selectedPackIndex];
 
     return Scaffold(
       appBar: AppBar(
@@ -91,49 +113,6 @@ class _ChocolateProductDetailPageState
           SizedBox(width: 16),
         ],
       ),
-      bottomNavigationBar:
-          selectedVariant == null
-              ? null
-              : Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: Colors.grey, width: 0.2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      "₹${selectedVariant.price.toStringAsFixed(0)}\n(Inclusive of all taxes)",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.favorite_border),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        child: Text("Add"),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -175,6 +154,57 @@ class _ChocolateProductDetailPageState
             const SizedBox(height: 16),
             if (!isLoadingSimilar) buildSimilarProductsSection(similarProducts),
           ],
+        ),
+      ),
+      bottomNavigationBar: buildBottomAddToCartButton(),
+    );
+  }
+
+  Widget buildBottomAddToCartButton() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final variants = product!.extraAttributes?.chocolateAttribute?.variants;
+    final selectedVariant = variants?[selectedPackIndex];
+    if (selectedVariant == null) return const SizedBox.shrink();
+
+    final productId = product!.id;
+    final productName = product!.name;
+    final imageUrl = product!.imageUrls.first;
+    final price = selectedVariant.price;
+    final sku = selectedVariant.sku;
+    final variantId = "${productId}_$sku";
+    final isInCart = cartProvider.getQty(variantId) > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isInCart ? Colors.orange : Colors.green.shade700,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        onPressed: () async {
+          if (isInCart) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CartPage()),
+            );
+          } else {
+            cartProvider.addItem(
+              variantId,
+              productId: productId,
+              productName: productName,
+              productImage: imageUrl,
+              price: price,
+            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text("Added to cart")));
+            // This must be in a StatefulWidget
+            if (mounted) setState(() {});
+          }
+        },
+        child: Text(
+          isInCart ? "Go to Cart" : "Add to Cart",
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -385,119 +415,28 @@ class _ChocolateProductDetailPageState
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final product = similarProducts[index];
-                final variant =
-                    product.extraAttributes?.chocolateAttribute?.variants.first;
-                final hasDiscount =
-                    (variant?.oldPrice ?? 0) > (variant?.price ?? 0);
-                final discountLabel =
-                    hasDiscount
-                        ? "${(((variant!.oldPrice! - variant.price) / variant.oldPrice!) * 100).toStringAsFixed(0)}% OFF"
-                        : null;
 
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => ChocolateProductDetailPage(
-                              productId: product.id,
-                            ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 140,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white,
-                    ),
-                    child: Stack(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(8),
+                return SizedBox(
+                  width: 120, // adjust width if needed
+                  child: ChocolateProductCard(
+                    productData: product.toJson(),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => ChocolateProductDetailPage(
+                                productId: product.id,
                               ),
-                              child: Image.network(
-                                product.imageUrls.first,
-                                height: 100,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    product.name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "₹${variant?.price.toStringAsFixed(0) ?? "--"}",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  if (variant?.oldPrice != null && hasDiscount)
-                                    Text(
-                                      "₹${variant!.oldPrice!.toStringAsFixed(0)}",
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                        decoration: TextDecoration.lineThrough,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
-                        if (discountLabel != null)
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(8),
-                                  bottomRight: Radius.circular(8),
-                                ),
-                              ),
-                              child: Text(
-                                discountLabel,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        const Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Icon(
-                            Icons.add_circle_outline,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
+                    onVariantTap: () {
+                      ChocolateProductCard.showVariantsBottomSheet(
+                        context,
+                        product,
+                      );
+                    },
                   ),
                 );
               },

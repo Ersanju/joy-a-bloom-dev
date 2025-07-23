@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:joy_a_bloom_dev/pages/home/chocolate_product_detail_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/product.dart';
@@ -55,33 +56,36 @@ class _ProductsByCategoryGridPageState
                   }
 
                   final products = snapshot.data!;
+                  final isChocolate = widget.categoryId == 'cat_chocolate';
+
                   return Padding(
-                    padding: const EdgeInsets.all(2.0),
+                    padding: const EdgeInsets.all(8.0),
                     child: GridView.builder(
                       itemCount: products.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 0,
-                            childAspectRatio: 0.61,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.53,
                           ),
                       itemBuilder: (_, index) {
                         final product = products[index];
 
-                        if (widget.categoryId == 'cat_chocolate') {
+                        if (isChocolate) {
                           return ChocolateProductCard(
                             productData: product.toJson(),
-                            onTap:
-                                () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => ProductDetailPage(
-                                          productId: product.id,
-                                        ),
-                                  ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => ChocolateProductDetailPage(
+                                        productId: product.id,
+                                      ),
                                 ),
+                              );
+                            },
                             onVariantTap: () {
                               ChocolateProductCard.showVariantsBottomSheet(
                                 context,
@@ -92,16 +96,17 @@ class _ProductsByCategoryGridPageState
                         } else {
                           return CakeProductCard(
                             productData: product.toJson(),
-                            onTap:
-                                () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => ProductDetailPage(
-                                          productId: product.id,
-                                        ),
-                                  ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => ProductDetailPage(
+                                        productId: product.id,
+                                      ),
                                 ),
+                              );
+                            },
                             isWishlisted: wishlistProvider.isWishlisted(
                               product.id,
                             ),

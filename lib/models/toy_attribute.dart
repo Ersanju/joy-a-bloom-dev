@@ -1,23 +1,23 @@
 class ToyAttribute {
   final String ageGroup;
-  final String material;
-  final String brand;
+  final String? material;
+  final String? brand;
   final double price;
-  final String sku;
+  final String? sku;
 
   ToyAttribute({
     required this.ageGroup,
-    required this.material,
-    required this.brand,
+    this.material,
+    this.brand,
     required this.price,
-    required this.sku,
+    this.sku,
   });
 
   factory ToyAttribute.fromJson(Map<String, dynamic> json) => ToyAttribute(
-    ageGroup: json['ageGroup'],
+    ageGroup: json['ageGroup'] ?? '',
     material: json['material'],
     brand: json['brand'],
-    price: (json['price'] as num).toDouble(),
+    price: (json['price'] as num?)?.toDouble() ?? 0.0,
     sku: json['sku'],
   );
 

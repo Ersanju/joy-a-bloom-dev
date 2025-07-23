@@ -134,14 +134,23 @@ class _CartItemWidgetState extends State<CartItemWidget> {
                           children: [
                             // Decrease or Delete
                             GestureDetector(
-                              onTapDown:
-                                  (_) => _startRepeating(() {
+                              onTap: () {
+                                // Single tap: delete if quantity == 1, or decrease
+                                widget.onDecrease();
+                              },
+                              onLongPressStart: (_) {
+                                // Long press: decrease but stop at 1
+                                if (widget.item.quantity > 1) {
+                                  _startRepeating(() {
                                     if (widget.item.quantity > 1) {
                                       widget.onDecrease();
+                                    } else {
+                                      _stopRepeating();
                                     }
-                                  }),
-                              onTapUp: (_) => _stopRepeating(),
-                              onTapCancel: _stopRepeating,
+                                  });
+                                }
+                              },
+                              onLongPressEnd: (_) => _stopRepeating(),
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
