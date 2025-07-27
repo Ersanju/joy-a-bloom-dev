@@ -23,76 +23,55 @@ class OtpPage extends StatefulWidget {
 }
 
 class _OtpPageState extends State<OtpPage> {
+  final _otpControllers = List.generate(6, (_) => TextEditingController());
+  final _focusNodes = List.generate(6, (_) => FocusNode());
+
   String? _verificationId;
-  final List<TextEditingController> _otpControllers = List.generate(
-    6,
-    (_) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
-  bool _showOtpSentMessage = true;
-  bool _canResend = false;
-  int _cooldownSeconds = 60;
   Timer? _resendTimer;
+  int _cooldownSeconds = 60;
+  bool _canResend = false;
+  bool _showOtpSentMessage = true;
+  bool _isVerifying = false;
 
   @override
   void initState() {
     super.initState();
     _sendOtp();
     Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) {
-        setState(() {
-          _showOtpSentMessage = false;
-        });
-      }
+      if (mounted) setState(() => _showOtpSentMessage = false);
     });
   }
 
-  void _sendOtp() async {
+  Future<void> _sendOtp() async {
     if (!_canResend && _verificationId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please wait before resending OTP.")),
-      );
+      _showSnackBar("Please wait before resending OTP.");
       return;
     }
 
-    setState(() {
-      _canResend = false;
-    });
+    setState(() => _canResend = false);
 
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: widget.phone,
         verificationCompleted: (credential) async {
           await FirebaseAuth.instance.signInWithCredential(credential);
-          _goToHome();
+          await _postLoginTasks();
+          _navigateToHome();
         },
-        verificationFailed: (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("OTP failed: ${e.message}")));
-        },
-        codeSent: (verificationId, _) {
-          setState(() {
-            _verificationId = verificationId;
-            _startCooldown();
-          });
-        },
+        verificationFailed: (e) => _showSnackBar("OTP failed: ${e.message}"),
+        codeSent:
+            (id, _) => setState(() {
+              _verificationId = id;
+              _startCooldown();
+            }),
         codeAutoRetrievalTimeout: (_) {},
       );
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'too-many-requests') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Too many OTP attempts. Please wait and try again later.",
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("OTP error: ${e.message}")));
-      }
+      final msg =
+          e.code == 'too-many-requests'
+              ? "Too many attempts. Try again later."
+              : "OTP error: ${e.message}";
+      _showSnackBar(msg);
     }
   }
 
@@ -100,7 +79,8 @@ class _OtpPageState extends State<OtpPage> {
     _cooldownSeconds = 60;
     _resendTimer?.cancel();
 
-    _resendTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       setState(() {
         _cooldownSeconds--;
         if (_cooldownSeconds <= 0) {
@@ -112,63 +92,54 @@ class _OtpPageState extends State<OtpPage> {
   }
 
   void _verifyOtp() async {
-    final smsCode = _otpControllers.map((c) => c.text.trim()).join();
-
-    if (_verificationId == null || smsCode.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter the full 6-digit OTP")),
-      );
+    final smsCode = _otpControllers.map((c) => c.text).join();
+    if (smsCode.length < 6 || _verificationId == null) {
+      _showSnackBar("Enter full 6-digit OTP");
       return;
     }
+
+    setState(() => _isVerifying = true);
 
     try {
       final credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
         smsCode: smsCode,
       );
-
       final userCred = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
-
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userCred.user!.uid)
-              .get();
-
-      if (!doc.exists) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCred.user!.uid)
-            .set({
-              'email': widget.email,
-              'phone': widget.phone,
-              'name': widget.name ?? '',
-              'createdAt': DateTime.now().toIso8601String(),
-            });
-      }
-
-      await _loadAndSyncWishlist();
-      await _loadAndSyncCart();
-
-      _goToHome();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid OTP or verification failed.")),
-      );
+      await _postLoginTasks(userCred.user?.uid);
+      _navigateToHome();
+    } on FirebaseAuthException {
+      _showSnackBar("Invalid OTP or verification failed.");
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
     }
   }
 
-  void _goToHome() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
-      (route) => false,
-    );
+  Future<void> _postLoginTasks([String? uid]) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid ?? user.uid)
+            .get();
+    if (!doc.exists) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'email': widget.email,
+        'phone': widget.phone,
+        'name': widget.name ?? '',
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+    }
+
+    await _syncWishlist();
+    await _syncCart();
   }
 
-  Future<void> _loadAndSyncWishlist() async {
+  Future<void> _syncWishlist() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -180,41 +151,58 @@ class _OtpPageState extends State<OtpPage> {
     final wishlistIds = List<String>.from(
       doc.data()?['wishlistProductIds'] ?? [],
     );
-
-    if (mounted) {
-      context.read<WishlistProvider>().setWishlist(wishlistIds);
-    }
+    context.read<WishlistProvider>().setWishlist(wishlistIds);
   }
 
-  Future<void> _loadAndSyncCart() async {
+  Future<void> _syncCart() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-    final cartList = doc.data()?['cartItems'] as List<dynamic>? ?? [];
+    final cartList =
+        (await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .get())
+                .data()?['cartItems']
+            as List<dynamic>? ??
+        [];
 
     final cartProvider = context.read<CartProvider>();
     await cartProvider.clearCart();
-
     for (final item in cartList) {
-      final cartItem = CartItem.fromJson(item);
-      cartProvider.setQty(cartItem.variant, cartItem.quantity);
+      cartProvider.setQty(
+        CartItem.fromJson(item).variant,
+        CartItem.fromJson(item).quantity,
+      );
     }
   }
+
+  void _handleFullOtpInput(String value) {
+    if (value.length == 6) {
+      for (int i = 0; i < 6; i++) {
+        _otpControllers[i].text = value[i];
+      }
+      _focusNodes[5].requestFocus();
+      _verifyOtp();
+    }
+  }
+
+  void _navigateToHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+      (_) => false,
+    );
+  }
+
+  void _showSnackBar(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   void dispose() {
     _resendTimer?.cancel();
-    for (final controller in _otpControllers) {
-      controller.dispose();
-    }
-    for (final node in _focusNodes) {
-      node.dispose();
-    }
+    _otpControllers.forEach((c) => c.dispose());
+    _focusNodes.forEach((f) => f.dispose());
     super.dispose();
   }
 
@@ -228,7 +216,7 @@ class _OtpPageState extends State<OtpPage> {
         leading: const BackButton(color: Colors.black),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -245,9 +233,7 @@ class _OtpPageState extends State<OtpPage> {
                 Text(widget.phone),
                 const SizedBox(width: 8),
                 InkWell(
-                  onTap: () {
-                    Navigator.pop(context); // Change number
-                  },
+                  onTap: () => Navigator.pop(context),
                   child: const Text(
                     "Change",
                     style: TextStyle(
@@ -267,49 +253,62 @@ class _OtpPageState extends State<OtpPage> {
               ],
             ),
             const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(6, (index) {
-                return SizedBox(
-                  width: 45,
-                  height: 50,
-                  child: RawKeyboardListener(
-                    focusNode: FocusNode(),
-                    onKey: (event) {
-                      if (event.logicalKey == LogicalKeyboardKey.backspace &&
-                          _otpControllers[index].text.isEmpty &&
-                          index > 0) {
-                        _focusNodes[index - 1].requestFocus();
-                      }
-                    },
+            Stack(
+              children: [
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.0,
                     child: TextField(
-                      controller: _otpControllers[index],
-                      focusNode: _focusNodes[index],
+                      autofocus: true,
                       keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      maxLength: 1,
+                      autofillHints: const [AutofillHints.oneTimeCode],
+                      onChanged: _handleFullOtpInput,
                       decoration: const InputDecoration(
-                        counterText: '',
-                        border: OutlineInputBorder(),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        isCollapsed: true,
                       ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          _otpControllers[index].text = value;
-                          _otpControllers[index]
-                              .selection = TextSelection.collapsed(offset: 1);
-
-                          if (index < 5) {
-                            _focusNodes[index + 1].requestFocus();
-                          } else {
-                            _focusNodes[index].unfocus();
-                            _verifyOtp(); // Auto-verify
-                          }
-                        }
-                      },
                     ),
                   ),
-                );
-              }),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(
+                    6,
+                    (index) => SizedBox(
+                      width: 45,
+                      height: 50,
+                      child: TextField(
+                        controller: _otpControllers[index],
+                        focusNode: _focusNodes[index],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        maxLength: 1,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: const InputDecoration(
+                          counterText: '',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          if (value.isNotEmpty && index < 5) {
+                            _focusNodes[index + 1].requestFocus();
+                          } else if (value.isEmpty && index > 0) {
+                            _focusNodes[index - 1].requestFocus();
+                          }
+                          final code =
+                              _otpControllers.map((c) => c.text).join();
+                          if (code.length == 6) _verifyOtp();
+                        },
+                        onSubmitted: (_) {
+                          if (index == 5) _verifyOtp();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Row(
@@ -355,11 +354,14 @@ class _OtpPageState extends State<OtpPage> {
                   backgroundColor: const Color(0xFF7A8E3E),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: _verifyOtp,
-                child: const Text(
-                  "Confirm OTP",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
+                onPressed: _isVerifying ? null : _verifyOtp,
+                child:
+                    _isVerifying
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                          "Confirm OTP",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
               ),
             ),
             const SizedBox(height: 20),

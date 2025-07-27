@@ -486,11 +486,11 @@ class _HomePageState extends State<HomePage> {
     VoidCallback onSearch,
   ) {
     final List<String> hints = [
-      "Search for cakes...",
-      "Search for gifts...",
-      "Search for flowers...",
-      "Search for toys...",
-      "Search for celebration items...",
+      "  Search for cakes...",
+      "  Search for gifts...",
+      "  Search for flowers...",
+      "  Search for toys...",
+      "  Search for celebration items...",
     ];
 
     return StatefulBuilder(
@@ -518,9 +518,30 @@ class _HomePageState extends State<HomePage> {
                   ),
                   suffixIcon:
                       isTyping
-                          ? IconButton(
-                            icon: const Icon(Icons.search),
-                            onPressed: onSearch,
+                          ? Padding(
+                            padding: const EdgeInsets.only(
+                              right: 8.0,
+                              top: 2,
+                              bottom: 2,
+                            ),
+                            child: Container(
+                              height: 2,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                // Change to your desired background
+                                borderRadius: BorderRadius.circular(
+                                  8,
+                                ), // Rounded background
+                              ),
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.search,
+                                  color: Colors.black,
+                                ),
+                                // Icon color
+                                onPressed: onSearch,
+                              ),
+                            ),
                           )
                           : null,
                   prefixIcon: isTyping ? null : const Icon(Icons.search),
