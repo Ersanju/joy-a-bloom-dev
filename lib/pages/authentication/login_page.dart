@@ -62,15 +62,9 @@ class _LoginPageState extends State<LoginPage> {
               .get();
 
       if (snapshot.docs.isNotEmpty) {
-        final user = snapshot.docs.first.data();
-        final email = user['email'] ?? '';
-        final name = user['name'] ?? '';
-
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => OtpPage(phone: fullPhone, email: email, name: name),
-          ),
+          MaterialPageRoute(builder: (_) => OtpPage(phone: fullPhone)),
         );
       } else {
         Navigator.push(

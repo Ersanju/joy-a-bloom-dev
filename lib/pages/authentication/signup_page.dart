@@ -19,7 +19,25 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _dobController = TextEditingController();
   String countryCode = '+91';
+  DateTime? _selectedDob;
+
+  void _pickDob() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDob = picked;
+        _dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+      });
+    }
+  }
 
   Future<Map<String, String>> fetchAssets() async {
     final doc =
@@ -37,14 +55,12 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   void _continueToOtp() {
+    final phone = widget.prefilledPhone;
     final name = _nameController.text.trim();
-    final rawPhone = widget.prefilledPhone.trim(); // already has country code
-    final phone = rawPhone.startsWith('+') ? rawPhone : '$countryCode$rawPhone';
-
-    if (name.isEmpty) {
+    if (name.isEmpty || _selectedDob == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Enter a valid name")));
+      ).showSnackBar(const SnackBar(content: Text('All fields are required.')));
       return;
     }
 
@@ -54,11 +70,20 @@ class _SignupPageState extends State<SignupPage> {
         builder:
             (_) => OtpPage(
               phone: phone,
-              email: phone, // keep email fallback as phone if needed
+              email: phone,
               name: name,
+              dob: _selectedDob,
             ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _dobController.dispose();
+    super.dispose();
   }
 
   @override
@@ -142,6 +167,19 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.email_outlined),
                           labelText: 'Email (Optional)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _dobController,
+                        readOnly: true,
+                        onTap: _pickDob,
+                        decoration: InputDecoration(
+                          labelText: 'Date of Birth',
+                          prefixIcon: const Icon(Icons.cake_outlined),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

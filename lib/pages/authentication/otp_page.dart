@@ -15,8 +15,15 @@ class OtpPage extends StatefulWidget {
   final String phone;
   final String? email;
   final String? name;
+  final DateTime? dob;
 
-  const OtpPage({super.key, required this.phone, this.email, this.name});
+  const OtpPage({
+    super.key,
+    required this.phone,
+    this.email,
+    this.name,
+    this.dob,
+  });
 
   @override
   State<OtpPage> createState() => _OtpPageState();
@@ -130,7 +137,8 @@ class _OtpPageState extends State<OtpPage> {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'email': widget.email,
         'phone': widget.phone,
-        'name': widget.name ?? '',
+        'name': widget.name,
+        'dob': widget.dob,
         'createdAt': DateTime.now().toIso8601String(),
       });
     }
@@ -249,7 +257,7 @@ class _OtpPageState extends State<OtpPage> {
               children: [
                 Positioned.fill(
                   child: Opacity(
-                    opacity: 0.0,
+                    opacity: 0.5,
                     child: TextField(
                       autofocus: true,
                       keyboardType: TextInputType.number,
