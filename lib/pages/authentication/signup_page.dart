@@ -9,9 +9,9 @@ import 'package:joy_a_bloom_dev/pages/authentication/otp_page.dart';
 import '../account_page/privacy_policy_page.dart';
 
 class SignupPage extends StatefulWidget {
-  final String prefilledEmail;
+  final String prefilledPhone;
 
-  const SignupPage({super.key, required this.prefilledEmail});
+  const SignupPage({super.key, required this.prefilledPhone});
 
   @override
   _SignupPageState createState() => _SignupPageState();
@@ -19,7 +19,6 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   String countryCode = '+91';
 
   Future<Map<String, String>> fetchAssets() async {
@@ -39,26 +38,23 @@ class _SignupPageState extends State<SignupPage> {
 
   void _continueToOtp() {
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    final rawPhone = widget.prefilledPhone.trim(); // already has country code
+    final phone = rawPhone.startsWith('+') ? rawPhone : '$countryCode$rawPhone';
 
-    if (name.isEmpty || phone.length != 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Enter a valid name and 10-digit phone number"),
-        ),
-      );
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter a valid name")));
       return;
     }
-
-    final fullPhone = '+91$phone'; // Fixed country code
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (_) => OtpPage(
-              phone: fullPhone, // send complete number
-              email: widget.prefilledEmail,
+              phone: phone,
+              email: phone, // keep email fallback as phone if needed
               name: name,
             ),
       ),
@@ -142,13 +138,10 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        enabled: false,
-                        controller: TextEditingController(
-                          text: widget.prefilledEmail,
-                        ),
+                        controller: TextEditingController(),
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.email_outlined),
-                          labelText: 'Email',
+                          labelText: 'Email (Optional)',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -168,7 +161,13 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                           Expanded(
                             child: TextField(
-                              controller: _phoneController,
+                              enabled: false,
+                              controller: TextEditingController(
+                                text: widget.prefilledPhone.replaceFirst(
+                                  '+91',
+                                  '',
+                                ),
+                              ),
                               keyboardType: TextInputType.number,
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
@@ -196,7 +195,7 @@ class _SignupPageState extends State<SignupPage> {
                           onPressed: _continueToOtp,
                           child: const Text(
                             "Sign Up",
-                            style: TextStyle(fontSize: 16),
+                            style: TextStyle(fontSize: 16, color: Colors.white),
                           ),
                         ),
                       ),

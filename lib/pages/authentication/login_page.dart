@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:joy_a_bloom_dev/pages/authentication/signup_page.dart';
 
 import '../account_page/privacy_policy_page.dart';
@@ -14,7 +16,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  String countryCode = '+91';
 
   Future<Map<String, String>> fetchLoginAssets() async {
     final doc =
@@ -38,34 +41,49 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleContinue() async {
-    final email = _emailController.text.trim();
-    if (!email.contains('@')) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Enter valid email")));
+    final phone = _phoneController.text.trim();
+
+    // Validate phone number length (basic check)
+    if (phone.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter a valid 10-digit phone number")),
+      );
       return;
     }
 
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .where('email', isEqualTo: email)
-            .limit(1)
-            .get();
+    final fullPhone = '+91$phone'; // Add country code
 
-    if (snapshot.docs.isNotEmpty) {
-      final user = snapshot.docs.first.data();
-      final phone = user['phone'];
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('phone', isEqualTo: fullPhone)
+              .limit(1)
+              .get();
 
-      Navigator.push(
+      if (snapshot.docs.isNotEmpty) {
+        final user = snapshot.docs.first.data();
+        final email = user['email'] ?? '';
+        final name = user['name'] ?? '';
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpPage(phone: fullPhone, email: email, name: name),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SignupPage(prefilledPhone: fullPhone),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
         context,
-        MaterialPageRoute(builder: (_) => OtpPage(phone: phone, email: email)),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => SignupPage(prefilledEmail: email)),
-      );
+      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
     }
   }
 
@@ -82,7 +100,6 @@ class _LoginPageState extends State<LoginPage> {
 
           final bannerUrl = snapshot.data!['bannerUrl']!;
           final logoUrl = snapshot.data!['logoUrl']!;
-          final googleLogoUrl = snapshot.data!['googleLogoUrl']!;
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -136,77 +153,99 @@ class _LoginPageState extends State<LoginPage> {
                   ),
 
                   const SizedBox(height: 20),
-
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        hintText: "Enter Email Address",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF88803D),
+                      height: 50,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 100,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade400),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                                color: Colors.grey.shade100,
+                              ),
+                              alignment: Alignment.center,
+                              child: CountryCodePicker(
+                                onChanged: (code) {
+                                  countryCode = code.dialCode ?? '+91';
+                                },
+                                initialSelection: 'IN',
+                                favorite: ['+91', 'IN'],
+                                showDropDownButton: false,
+                                enabled: false,
+                                padding: EdgeInsets.zero,
+                                textStyle: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.start,
+                              // aligned to the left
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontFamily: 'monospace',
+                                letterSpacing: 3.0,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              decoration: InputDecoration(
+                                hintText: 'Enter phone number',
+                                hintStyle: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade500,
+                                  letterSpacing: 2.5,
+                                ),
+                                border: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.only(
+                                    topRight: Radius.circular(8),
+                                    bottomRight: Radius.circular(8),
+                                  ),
+                                ),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  SizedBox(
+                    height: 50,
+                    width: 340,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808000),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        onPressed: _handleContinue,
-                        child: const Text("Continue"),
+                      ),
+                      onPressed: _handleContinue,
+                      child: const Text(
+                        "Sign Up",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 16),
-
-                  const Row(
-                    children: [
-                      Expanded(
-                        child: Divider(thickness: 1, indent: 24, endIndent: 10),
-                      ),
-                      Text("or Login with"),
-                      Expanded(
-                        child: Divider(thickness: 1, indent: 10, endIndent: 24),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        icon: Image.network(
-                          googleLogoUrl,
-                          // <- this should be fetched from Firestore
-                          height: 24,
-                          errorBuilder:
-                              (context, error, stackTrace) =>
-                                  const Icon(Icons.error, size: 24),
-                        ),
-                        label: const Text("Login with Google"),
-                        onPressed: () {
-                          // Hook up Firebase Auth Google login
-                        },
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
 
                   RichText(
                     textAlign: TextAlign.center,

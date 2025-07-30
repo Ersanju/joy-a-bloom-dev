@@ -13,10 +13,10 @@ import '../../utils/wishlist_provider.dart';
 
 class OtpPage extends StatefulWidget {
   final String phone;
-  final String email;
+  final String? email;
   final String? name;
 
-  const OtpPage({required this.phone, required this.email, this.name});
+  const OtpPage({super.key, required this.phone, this.email, this.name});
 
   @override
   State<OtpPage> createState() => _OtpPageState();
@@ -244,14 +244,6 @@ class _OtpPageState extends State<OtpPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.email),
-                const SizedBox(width: 8),
-                Text(widget.email),
-              ],
-            ),
             const SizedBox(height: 30),
             Stack(
               children: [
@@ -343,7 +335,7 @@ class _OtpPageState extends State<OtpPage> {
                   children: const [
                     Icon(Icons.check_box, color: Colors.green),
                     SizedBox(width: 8),
-                    Text("OTP sent to mobile & email ID."),
+                    Text("OTP sent to mobile number."),
                   ],
                 ),
               ),
