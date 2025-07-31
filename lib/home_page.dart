@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -33,6 +35,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool hasInternet = true;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
   int _currentIndex = 0;
   final PageController _pageController = PageController();
   bool isHomeLoading = true;
@@ -56,8 +60,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
-    _fetchBannerImages();
+    _startConnectivityListener();
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_pageController.hasClients && bannerImages.isNotEmpty) {
         final nextPage =
@@ -67,6 +70,37 @@ class _HomePageState extends State<HomePage> {
           duration: const Duration(milliseconds: 100),
           curve: Curves.easeInOut,
         );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  Future<bool> _hasRealInternet() async {
+    try {
+      final result = await InternetAddress.lookup('example.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _startConnectivityListener() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) async {
+      final realInternet = await _hasRealInternet();
+      setState(() {
+        hasInternet = realInternet;
+      });
+
+      if (realInternet && categories.isEmpty) {
+        _loadInitialData();
+        _fetchBannerImages();
       }
     });
   }
@@ -92,7 +126,52 @@ class _HomePageState extends State<HomePage> {
       },
       child: Scaffold(
         appBar: _currentIndex == 0 ? buildAppBar() : null,
-        body: _pages[_currentIndex],
+        body:
+            hasInternet
+                ? _pages[_currentIndex]
+                : Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/icon/no_internet.gif',
+                        width: 400,
+                        height: 450,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final realInternet = await _hasRealInternet();
+                          if (realInternet) {
+                            setState(() {
+                              hasInternet = true;
+                            });
+                            _loadInitialData();
+                            _fetchBannerImages();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'No internet connection. Please try again.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          textStyle: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
         bottomNavigationBar: buildBottomNavigationBar(),
       ),
     );
