@@ -2,47 +2,81 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/card_message.dart';
 import '../models/cart_item.dart';
 
 class CartProvider extends ChangeNotifier {
   final List<CartItem> _cartItems = [];
 
+  final Map<String, String> _cakeMessages = {};
+  final Map<String, Map<String, dynamic>> _cardMessages = {};
+
+  int _couponDiscount = 0;
+  String _couponMessage = '';
+  bool _couponApplied = false;
+
   List<CartItem> get cartItems => List.unmodifiable(_cartItems);
+
+  Map<String, String> get cakeMessages => _cakeMessages;
+
+  Map<String, Map<String, dynamic>> get cardMessages => _cardMessages;
+
+  int get couponDiscount => _couponDiscount;
+
+  String get couponMessage => _couponMessage;
+
+  bool get couponApplied => _couponApplied;
 
   User? get user => FirebaseAuth.instance.currentUser;
 
   CartProvider() {
-    _loadCart(); // Auto-load on init
+    _loadCart();
   }
 
-  /// Accurate total price
   double get rawProductTotal =>
       _cartItems.fold(0.0, (sum, item) => sum + item.price * item.quantity);
 
-  /// Rounded total price
   int get productPrice => rawProductTotal.toInt();
 
-  /// Dynamic discount rules
   int get discount {
     if (productPrice > 1000) return 100;
     if (productPrice > 500) return 50;
     return 0;
   }
 
-  /// Delivery charge logic
   int get deliveryCharge => productPrice > 500 ? 0 : 19;
 
-  /// Convenience charge logic
   int get convenienceCharge => productPrice > 500 ? 0 : 39;
 
-  /// Final subtotal after discount
   int get subtotal =>
-      (productPrice - discount).clamp(0, double.infinity).toInt();
+      (productPrice - discount - couponDiscount)
+          .clamp(0, double.infinity)
+          .toInt();
 
-  /// Final payable amount
   int get total => subtotal + deliveryCharge + convenienceCharge;
 
-  /// Get quantity for a specific variant
+  void applyCoupon(String code) {
+    final normalizedCode = code.trim().toUpperCase();
+
+    if (_couponApplied) {
+      _couponMessage = "✅ Coupon already applied.";
+      notifyListeners();
+      return;
+    }
+
+    if (normalizedCode == "JOY50") {
+      _couponDiscount = 50;
+      _couponMessage = "🎉 Coupon applied! ₹50 off.";
+      _couponApplied = true;
+    } else {
+      _couponMessage = "❌ Invalid coupon code.";
+      _couponDiscount = 0;
+      _couponApplied = false;
+    }
+
+    notifyListeners();
+  }
+
   int getQty(String variantId) {
     return _cartItems
         .firstWhere(
@@ -52,7 +86,6 @@ class CartProvider extends ChangeNotifier {
         .quantity;
   }
 
-  /// Add item to cart
   Future<void> addItem(
     String variantId, {
     required String productId,
@@ -84,7 +117,6 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Remove item from cart
   Future<void> removeItem(String variantId) async {
     if (user == null) return;
 
@@ -94,10 +126,8 @@ class CartProvider extends ChangeNotifier {
     final currentItem = _cartItems[index];
 
     if (currentItem.quantity <= 1) {
-      // 🗑️ Actually remove it when quantity is 1
       _cartItems.removeAt(index);
     } else {
-      // ➖ Just decrease
       _cartItems[index] = currentItem.copyWith(
         quantity: currentItem.quantity - 1,
       );
@@ -107,14 +137,14 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clear all items
   Future<void> clearCart() async {
     _cartItems.clear();
+    _cakeMessages.clear();
+    _cardMessages.clear();
     await _saveCartToFirestore();
     notifyListeners();
   }
 
-  /// Load cart from Firestore
   Future<void> _loadCart() async {
     if (user == null) return;
 
@@ -124,6 +154,7 @@ class CartProvider extends ChangeNotifier {
               .collection('users')
               .doc(user!.uid)
               .get();
+
       final data = doc.data();
       final items =
           (data?['cartItems'] as List<dynamic>? ?? [])
@@ -133,13 +164,25 @@ class CartProvider extends ChangeNotifier {
       _cartItems
         ..clear()
         ..addAll(items);
+
+      _cakeMessages.clear();
+      _cardMessages.clear();
+
+      for (var e in items) {
+        if (e.cakeMessage != null && e.cakeMessage!.isNotEmpty) {
+          _cakeMessages[e.productId] = e.cakeMessage!;
+        }
+        if (e.cardMessage != null) {
+          _cardMessages[e.productId] = e.cardMessage!.toJson();
+        }
+      }
+
       notifyListeners();
     } catch (e) {
       debugPrint("Failed to load cart: $e");
     }
   }
 
-  /// Save cart to Firestore
   Future<void> _saveCartToFirestore() async {
     if (user == null) return;
 
@@ -153,7 +196,6 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  /// Replace entire cart
   void setCart(List<CartItem> items) {
     _cartItems
       ..clear()
@@ -161,7 +203,6 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set quantity directly
   void setQty(String variantId, int qty) {
     final index = _cartItems.indexWhere((item) => item.variant == variantId);
     if (index >= 0) {
@@ -172,5 +213,30 @@ class CartProvider extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  Future<void> updateCakeMessage(String variantId, String message) async {
+    final index = _cartItems.indexWhere((item) => item.variant == variantId);
+    if (index == -1) return;
+
+    _cartItems[index] = _cartItems[index].copyWith(cakeMessage: message);
+    _cakeMessages[_cartItems[index].productId] = message;
+
+    await _saveCartToFirestore();
+    notifyListeners();
+  }
+
+  Future<void> updateCardMessage(
+    String variantId,
+    CardMessage cardMessage,
+  ) async {
+    final index = _cartItems.indexWhere((item) => item.variant == variantId);
+    if (index == -1) return;
+
+    _cartItems[index] = _cartItems[index].copyWith(cardMessage: cardMessage);
+    _cardMessages[_cartItems[index].productId] = cardMessage.toJson();
+
+    await _saveCartToFirestore();
+    notifyListeners();
   }
 }

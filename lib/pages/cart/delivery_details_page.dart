@@ -6,6 +6,8 @@ import 'package:joy_a_bloom_dev/pages/cart/step_indicator.dart';
 import 'package:joy_a_bloom_dev/pages/free_message_card_page.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/card_message.dart';
+import '../../models/cart_item.dart';
 import '../../models/user_address.dart';
 import '../../utils/cart_provider.dart';
 import '../../utils/location_provider.dart';
@@ -34,6 +36,9 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
   void initState() {
     super.initState();
     _selectedAddress = widget.selectedAddress;
+    final cartProvider = context.read<CartProvider>();
+    _cakeMessages.addAll(cartProvider.cakeMessages);
+    _cardMessages.addAll(cartProvider.cardMessages);
   }
 
   void _scrollToPriceDetails() {
@@ -109,12 +114,32 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
                                     ),
                                   );
                                   if (result is Map<String, dynamic>) {
+                                    final message = CardMessage.fromJson(
+                                      result,
+                                    );
+
                                     setState(() {
-                                      _cardMessages[item.productId] = result;
+                                      _cardMessages[item.productId] =
+                                          result; // Save as Map<String, dynamic>
                                     });
+
+                                    // ✅ Use a different name to avoid shadowing
+                                    final currentItem = cartProvider.cartItems
+                                        .firstWhere(
+                                          (e) => e.productId == item.productId,
+                                          orElse: () => CartItem.empty(),
+                                        );
+
+                                    if (currentItem.variant.isNotEmpty) {
+                                      await cartProvider.updateCardMessage(
+                                        currentItem.variant,
+                                        message,
+                                      );
+                                    }
                                   }
                                 }
                                 : null,
+
                         cardMessageData:
                             isCake ? _cardMessages[item.productId] : null,
                       );
@@ -126,6 +151,7 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
                     discount: cartProvider.discount,
                     deliveryCharge: cartProvider.deliveryCharge,
                     convenienceCharge: cartProvider.convenienceCharge,
+                    showCouponField: true, // ✅ show here only
                   ),
                 ],
               ),
@@ -439,6 +465,8 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
   }
 
   void _showCakeMessageDialog(String productId) {
+    final cartProvider = context.read<CartProvider>();
+
     final controller = TextEditingController(
       text: _cakeMessages[productId] ?? '',
     );
@@ -462,11 +490,24 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
                 child: const Text("Cancel"),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  final message = controller.text.trim();
+
                   setState(() {
-                    _cakeMessages[productId] = controller.text.trim();
+                    _cakeMessages[productId] = message;
                   });
+
                   Navigator.pop(context);
+
+                  // ✅ Save to Firestore
+                  final item = cartProvider.cartItems.firstWhere(
+                    (e) => e.productId == productId,
+                    orElse: () => CartItem.empty(),
+                  );
+
+                  if (item.variant.isNotEmpty) {
+                    await cartProvider.updateCakeMessage(item.variant, message);
+                  }
                 },
                 child: const Text("Save"),
               ),

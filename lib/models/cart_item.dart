@@ -1,14 +1,15 @@
+import 'card_message.dart';
+
 class CartItem {
   final String productId;
   final String productName;
   final String productImage;
   final int quantity;
-  final String variant; // unique variant ID (e.g., productId_sku)
+  final String variant;
   final double price;
 
-  // ✅ New optional fields
   final String? cakeMessage;
-  final Map<String, dynamic>? cardMessageData;
+  final CardMessage? cardMessage;
 
   CartItem({
     required this.productId,
@@ -18,7 +19,7 @@ class CartItem {
     required this.variant,
     required this.price,
     this.cakeMessage,
-    this.cardMessageData,
+    this.cardMessage,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -29,12 +30,12 @@ class CartItem {
       quantity: json['quantity'],
       variant: json['variant'],
       price: (json['price'] as num).toDouble(),
-
-      // ✅ safely parse optional fields
       cakeMessage: json['cakeMessage'],
-      cardMessageData:
-          json['cardMessageData'] != null
-              ? Map<String, dynamic>.from(json['cardMessageData'])
+      cardMessage:
+          json['cardMessage'] != null
+              ? CardMessage.fromJson(
+                Map<String, dynamic>.from(json['cardMessage']),
+              )
               : null,
     );
   }
@@ -47,13 +48,13 @@ class CartItem {
     'variant': variant,
     'price': price,
     if (cakeMessage != null) 'cakeMessage': cakeMessage,
-    if (cardMessageData != null) 'cardMessageData': cardMessageData,
+    if (cardMessage != null) 'cardMessage': cardMessage!.toJson(),
   };
 
   CartItem copyWith({
     int? quantity,
     String? cakeMessage,
-    Map<String, dynamic>? cardMessageData,
+    CardMessage? cardMessage,
   }) {
     return CartItem(
       productId: productId,
@@ -63,7 +64,7 @@ class CartItem {
       variant: variant,
       price: price,
       cakeMessage: cakeMessage ?? this.cakeMessage,
-      cardMessageData: cardMessageData ?? this.cardMessageData,
+      cardMessage: cardMessage ?? this.cardMessage,
     );
   }
 

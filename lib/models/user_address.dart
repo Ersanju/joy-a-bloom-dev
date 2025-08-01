@@ -27,6 +27,22 @@ class UserAddress {
     this.location,
   });
 
+  factory UserAddress.empty() {
+    return UserAddress(
+      name: '',
+      phone: '',
+      addressType: '',
+      street: '',
+      area: '',
+      landmark: '',
+      pinCode: '',
+      city: '',
+      state: '',
+      country: '',
+      location: null,
+    );
+  }
+
   factory UserAddress.fromJson(Map<String, dynamic> json) {
     return UserAddress(
       name: json['name'] ?? '',

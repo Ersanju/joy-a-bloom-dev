@@ -323,7 +323,8 @@ class _FreeMessageCardPageState extends State<FreeMessageCardPage> {
                     width: 1.5,
                   ),
                 ),
-                fillColor: Colors.white, // Set background to white
+                fillColor: Colors.white,
+                // Set background to white
                 filled: true,
               ),
             ),
@@ -368,7 +369,8 @@ class _FreeMessageCardPageState extends State<FreeMessageCardPage> {
                     width: 1.5,
                   ),
                 ),
-                fillColor: Colors.white, // White background
+                fillColor: Colors.white,
+                // White background
                 filled: true,
               ),
             ),
@@ -452,7 +454,8 @@ class _FreeMessageCardPageState extends State<FreeMessageCardPage> {
                       // If all validations pass
                       Navigator.pop(context, {
                         "occasion": selectedOccasion,
-                        "to": toController.text.trim(),
+                        "templateId": null, // Add this if needed later
+                        "dear": toController.text.trim(),
                         "message": messageController.text.trim(),
                         "from": fromController.text.trim(),
                         "hideSenderName": hideSenderName,

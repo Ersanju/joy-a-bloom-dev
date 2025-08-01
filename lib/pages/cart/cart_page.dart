@@ -104,6 +104,8 @@ class _CartPageState extends State<CartPage> {
                             discount: cartProvider.discount,
                             deliveryCharge: cartProvider.deliveryCharge,
                             convenienceCharge: cartProvider.convenienceCharge,
+                            showCouponField:
+                                false, // don't show coupon field here
                           ),
                         ],
                       ),
@@ -112,7 +114,7 @@ class _CartPageState extends State<CartPage> {
 
                   // Bottom Bar
                   CartBottomBar(
-                    total: cartProvider.total,
+                    total: cartProvider.total, // ✅ Reflects coupon discount now
                     onViewPriceDetails: _scrollToPriceDetails,
                     onProceed: () {
                       Navigator.push(
