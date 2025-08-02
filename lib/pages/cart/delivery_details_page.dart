@@ -564,6 +564,16 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
   }
 
   void _goToPaymentPage() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentPage()));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => PaymentPage(
+              selectedAddress: _selectedAddress!,
+              selectedDate: _selectedDate!,
+              selectedTimeSlot: _selectedTimeSlot!,
+            ),
+      ),
+    );
   }
 }
